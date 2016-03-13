@@ -1,3 +1,8 @@
+STACKUP - A tool to create List Manifests 
+=
+stackup [![Build Status](https://travis-ci.org/runcom/skopeo.svg?branch=master)](https://travis-ci.org/runcom/skopeo)
+=
+
 _Please be aware `stackup` is still work in progress_
 
 `stackup` is a command line utility to create `list manifests`.
