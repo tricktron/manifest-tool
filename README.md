@@ -19,7 +19,7 @@ you'll get an error. You can fix this by either logging in (via `docker login`) 
 and `--password`.
 Building
 -
-To build `skopeo` you need at least Go 1.5 because it uses the latest `GO15VENDOREXPERIMENT` flag. Also, make sure to clone the repository in your `GOPATH` - otherwise compilation fails.
+To build `stackup` you need at least Go 1.5 because it uses the latest `GO15VENDOREXPERIMENT` flag. Also, make sure to clone the repository in your `GOPATH` - otherwise compilation fails.
 ```sh
 $ cd $GOPATH/src
 $ mkdir -p github.com/harche
@@ -39,9 +39,9 @@ If you built from source:
 ```sh
 $ sudo make install
 ```
-`skopeo` is also available from Fedora 23:
+`stackup` is also available from Fedora 23:
 ```sh
-sudo dnf install skopeo
+sudo dnf install stackup
 ```
 Tests
 -
