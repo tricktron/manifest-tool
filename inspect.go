@@ -1,12 +1,12 @@
 package main
 
 import (
-	"fmt"
+//	"fmt"
 	"strings"
 
 	"github.com/codegangsta/cli"
 	"github.com/harche/stackup/docker"
-	"github.com/harche/stackup/types"
+//	"github.com/harche/stackup/types"
 )
 
 type imgKind int
@@ -20,37 +20,11 @@ const (
 	kindAppc
 )
 
-func getImgType(img string) imgKind {
-	if strings.HasPrefix(img, imgTypeDocker) {
-		return kindDocker
-	}
-	if strings.HasPrefix(img, imgTypeAppc) {
-		return kindAppc
-	}
-	// TODO(runcom): v2 will support this
-	//return kindUnknown
-	return kindDocker
-}
 
-func inspect(c *cli.Context) (*types.ImageInspect, error) {
-	var (
-		imgInspect *types.ImageInspect
-		err        error
-		name       = c.Args().First()
-		kind       = getImgType(name)
-	)
+func inspect(c *cli.Context)  {
 
-	switch kind {
-	case kindDocker:
-		docker.PutData(c, strings.Replace(name, imgTypeDocker, "", -1))
-		imgInspect, err = docker.GetData(c, strings.Replace(name, imgTypeDocker, "", -1))
-		if err != nil {
-			return nil, err
-		}
-	case kindAppc:
-		return nil, fmt.Errorf("not implemented yet")
-	default:
-		return nil, fmt.Errorf("%s image is invalid, please use either 'docker://' or 'appc://'", name)
-	}
-	return imgInspect, nil
+	name  := c.Args().First()
+
+	docker.PutData(c, strings.Replace(name, imgTypeDocker, "", -1))
+
 }

@@ -1,8 +1,6 @@
 package main
 
 import (
-	"encoding/json"
-	"fmt"
 	"os"
 
 	"github.com/Sirupsen/logrus"
@@ -16,20 +14,12 @@ const (
 )
 
 var inspectCmd = func(c *cli.Context) {
-	imgInspect, err := inspect(c)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	out, err := json.Marshal(imgInspect)
-	if err != nil {
-		logrus.Fatal(err)
-	}
-	fmt.Println(string(out))
+	inspect(c)
 }
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "skopeo"
+	app.Name = "stackup"
 	app.Version = version
 	app.Usage = usage
 	app.Flags = []cli.Flag{

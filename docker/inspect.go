@@ -129,9 +129,9 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func PutData(c *cli.Context, name string) {
+func PutData(c *cli.Context, filePath string) {
 
-	filename, _ := filepath.Abs("/home/harshal/go/src/github.com/runcom/skopeo/listm.yml")
+	filename, _ := filepath.Abs(filePath)
 	yamlFile, err := ioutil.ReadFile(filename)
 
 	var yamlManifestList YAMLManifestList
