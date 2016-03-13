@@ -5,34 +5,7 @@ _Please be aware `stackup` is still work in progress_
 
 Examples:
 ```sh
-# show repository's labels of rhel7:latest
-$ skopeo registry.access.redhat.com/rhel7 | jq '.Config.Labels'
-{
-  "Architecture": "x86_64",
-  "Authoritative_Registry": "registry.access.redhat.com",
-  "BZComponent": "rhel-server-docker",
-  "Build_Host": "rcm-img04.build.eng.bos.redhat.com",
-  "Name": "rhel7/rhel",
-  "Release": "38",
-  "Vendor": "Red Hat, Inc.",
-  "Version": "7.2"
-}
-
-# show repository's tags
-$ skopeo docker.io/fedora | jq '.RepoTags'
-[
-  "20",
-  "21",
-  "22",
-  "23",
-  "heisenbug",
-  "latest",
-  "rawhide"
-]
-
-# show image's digest
-$ skopeo docker.io/fedora:rawhide | jq '.Digest'
-"sha256:905b4846938c8aef94f52f3e41a11398ae5b40f5855fb0e40ed9c157e721d7f8"
+./stackup /home/harshal/go/src/github.com/runcom/skopeo/listm.yml
 ```
 
 Private registries with authentication
