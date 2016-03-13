@@ -12,7 +12,25 @@ Example:
 ```sh
 ./stackup /home/harshal/listm.yml
 ```
-
+Sample YAML:
+```sh
+--- 
+image: pharshal/myListManifest:latest
+manifests: 
+  - 
+    image: docker.io/fedora:rawhide
+    platform: 
+      architecture: ppc64
+      os: Linux
+      variant: ppc64le
+  - 
+    image: docker.io/ubuntu:latest
+    platform: 
+      architecture: x86_64
+      features: 
+        - sse
+      os: Linux
+```
 
 If your cli config is found but it doesn't contain the necessary credentials for the queried registry
 you'll get an error. You can fix this by either logging in (via `docker login`) or providing `--username`
