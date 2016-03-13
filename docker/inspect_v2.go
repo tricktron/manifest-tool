@@ -4,11 +4,11 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"runtime"
-	"path/filepath"
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
 	"github.com/codegangsta/cli"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"path/filepath"
+	"runtime"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
@@ -17,15 +17,15 @@ import (
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/client"
 	"github.com/docker/distribution/registry/api/v2"
+	"github.com/docker/distribution/registry/client"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/image/v1"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
-	"github.com/runcom/skopeo/types"
+	"github.com/harche/stackup/types"
 	"golang.org/x/net/context"
 )
 
@@ -42,25 +42,23 @@ type v2ManifestFetcher struct {
 type Platform struct {
 	//image string
 	Architecture string
-	OS string
-	Variant string
-	Features []string
+	OS           string
+	Variant      string
+	Features     []string
 }
 type ManifestDescriptor struct {
-	Image string
+	Image    string
 	Platform Platform
 }
 
 type YAMLManifestList struct {
-	Image string
+	Image     string
 	Manifests []ManifestDescriptor
 }
 
-
 func (mf *v2ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref reference.Named) {
 	var (
-
-		err        error
+		err error
 	)
 
 	//mf.repo, mf.confirmedV2, err = distribution.NewV2Repository(ctx, mf.repoInfo, mf.endpoint, mf.config.MetaHeaders, mf.config.AuthConfig, "pull")
@@ -69,7 +67,6 @@ func (mf *v2ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref refere
 		logrus.Debugf("Error getting v2 registry: %v", err)
 		//return nil, err
 	}
-
 
 	//manifests, err := mf.repo.Manifests(ctx, nil)
 
@@ -91,10 +88,8 @@ func (mf *v2ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref refere
 
 	fmt.Println(manifestURL)
 
-
 	filename, _ := filepath.Abs("/home/harshal/go/src/github.com/runcom/skopeo/listm.yml")
 	yamlFile, err := ioutil.ReadFile(filename)
-
 
 	var yamlManifestList YAMLManifestList
 	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
@@ -110,44 +105,38 @@ func (mf *v2ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref refere
 
 	for i, img := range yamlManifestList.Manifests {
 
-		imgInsp,_  := GetData(c,img.Image)
+		imgInsp, _ := GetData(c, img.Image)
 		imgDigest := imgInsp.Digest
 		fmt.Println(imgDigest)
 		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
 
 	}
 
-
 	fmt.Println(ListManifest)
-//	yamlFile, err := ioutil.ReadFile(filename)
+	//	yamlFile, err := ioutil.ReadFile(filename)
 
-
-
-
-
-
-//	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
-//	if err != nil {
-//		return "", err
-//	}
-//
-//	putRequest.Header.Set("Content-Type", mediaType)
-//
-//	resp, err := ms.client.Do(putRequest)
-//	if err != nil {
-//		return "", err
-//	}
-//	defer resp.Body.Close()
-//
-//	if SuccessStatus(resp.StatusCode) {
-//		dgstHeader := resp.Header.Get("Docker-Content-Digest")
-//		dgst, err := digest.ParseDigest(dgstHeader)
-//		if err != nil {
-//			return "", err
-//		}
-//
-//		return dgst, nil
-//	}
+	//	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//
+	//	putRequest.Header.Set("Content-Type", mediaType)
+	//
+	//	resp, err := ms.client.Do(putRequest)
+	//	if err != nil {
+	//		return "", err
+	//	}
+	//	defer resp.Body.Close()
+	//
+	//	if SuccessStatus(resp.StatusCode) {
+	//		dgstHeader := resp.Header.Get("Docker-Content-Digest")
+	//		dgst, err := digest.ParseDigest(dgstHeader)
+	//		if err != nil {
+	//			return "", err
+	//		}
+	//
+	//		return dgst, nil
+	//	}
 }
 
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {

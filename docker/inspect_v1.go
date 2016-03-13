@@ -4,9 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"strings"
-	"github.com/codegangsta/cli"
 	"github.com/Sirupsen/logrus"
+	"github.com/codegangsta/cli"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/registry/client/transport"
 	dockerdistribution "github.com/docker/docker/distribution"
@@ -16,8 +15,9 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
-	"github.com/runcom/skopeo/types"
+	"github.com/harche/stackup/types"
 	"golang.org/x/net/context"
+	"strings"
 )
 
 type v1ManifestFetcher struct {
@@ -31,7 +31,7 @@ type v1ManifestFetcher struct {
 	session    *registry.Session
 }
 
-func (mf *v1ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref reference.Named){
+func (mf *v1ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref reference.Named) {
 
 }
 func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {

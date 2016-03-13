@@ -5,8 +5,8 @@ import (
 	"strings"
 
 	"github.com/codegangsta/cli"
-	"github.com/runcom/skopeo/docker"
-	"github.com/runcom/skopeo/types"
+	"github.com/harche/stackup/docker"
+	"github.com/harche/stackup/types"
 )
 
 type imgKind int
@@ -42,7 +42,7 @@ func inspect(c *cli.Context) (*types.ImageInspect, error) {
 
 	switch kind {
 	case kindDocker:
-		docker.PutData(c,strings.Replace(name, imgTypeDocker, "", -1) )
+		docker.PutData(c, strings.Replace(name, imgTypeDocker, "", -1))
 		imgInspect, err = docker.GetData(c, strings.Replace(name, imgTypeDocker, "", -1))
 		if err != nil {
 			return nil, err

@@ -1,33 +1,32 @@
 package docker
 
 import (
+	"bytes"
+	"crypto/tls"
 	"encoding/json"
+	"errors"
 	"fmt"
+	"gopkg.in/yaml.v2"
+	"io/ioutil"
+	"net"
+	"net/http"
+	"net/url"
+	"os"
+	"path/filepath"
 	"strings"
 	"syscall"
-	"bytes"
-	"net/url"
-	"net/http"
-	"net"
-	"errors"
 	"time"
-	"path/filepath"
-	"io/ioutil"
-	"gopkg.in/yaml.v2"
-	"crypto/tls"
-	"os"
 
-
-	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/docker/distribution/digest"
+	"github.com/docker/distribution/manifest/manifestlist"
 	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
-	"github.com/docker/distribution/registry/client/transport"
 	"github.com/docker/distribution/registry/client/auth"
+	"github.com/docker/distribution/registry/client/transport"
 
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/cliconfig"
@@ -40,7 +39,7 @@ import (
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
 	registryTypes "github.com/docker/engine-api/types/registry"
-	"github.com/runcom/skopeo/types"
+	"github.com/harche/stackup/types"
 	"golang.org/x/net/context"
 )
 
@@ -64,6 +63,7 @@ func (th *existingTokenHandler) AuthorizeRequest(req *http.Request, params map[s
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", th.token))
 	return nil
 }
+
 // fallbackError wraps an error that can possibly allow fallback to a different
 // endpoint.
 type fallbackError struct {
@@ -83,7 +83,7 @@ func (f fallbackError) Error() string {
 
 type manifestFetcher interface {
 	Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error)
-    Put(c *cli.Context, ctx context.Context, ref reference.Named)
+	Put(c *cli.Context, ctx context.Context, ref reference.Named)
 }
 
 func validateName(name string) error {
@@ -97,7 +97,6 @@ func validateName(name string) error {
 	}
 	return nil
 }
-
 
 func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 	if len(via) >= 10 {
@@ -132,10 +131,8 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 
 func PutData(c *cli.Context, name string) {
 
-
 	filename, _ := filepath.Abs("/home/harshal/go/src/github.com/runcom/skopeo/listm.yml")
 	yamlFile, err := ioutil.ReadFile(filename)
-
 
 	var yamlManifestList YAMLManifestList
 	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
@@ -145,7 +142,6 @@ func PutData(c *cli.Context, name string) {
 
 	fmt.Println(yamlManifestList.Image)
 
-
 	var ListManifest manifestlist.ManifestList
 	err = yaml.Unmarshal(yamlFile, &ListManifest)
 	if err != nil {
@@ -153,7 +149,7 @@ func PutData(c *cli.Context, name string) {
 	}
 
 	for i, img := range yamlManifestList.Manifests {
-		imgInsp,_  := GetData(c,img.Image)
+		imgInsp, _ := GetData(c, img.Image)
 		imgDigest := imgInsp.Digest
 		fmt.Println(imgDigest)
 		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
@@ -165,7 +161,6 @@ func PutData(c *cli.Context, name string) {
 	deserializedManifestList, _ := manifestlist.FromDescriptors(manifestDescriptors)
 	//	var test *manifestlist.DeserializedManifestList
 
-
 	fmt.Println("JSON")
 
 	//	js , _ := json.Marshal(ListManifest)
@@ -173,12 +168,10 @@ func PutData(c *cli.Context, name string) {
 	fmt.Println("AFter JSON")
 	//fmt.Println(ListManifest)
 
-
-//	ref, _ := reference.ParseNamed(name)
+	//	ref, _ := reference.ParseNamed(name)
 	ref, _ := reference.ParseNamed(yamlManifestList.Image)
 
 	repoInfo, _ := registry.ParseRepositoryInfo(ref)
-
 
 	//authConfig, _ := getAuthConfig(c, repoInfo.Index)
 
@@ -205,12 +198,11 @@ func PutData(c *cli.Context, name string) {
 	fmt.Println(repoInfo)
 	fmt.Println(repoName)
 
-
-//	cer, err := tls.LoadX509KeyPair("/home/harshal/certs/server.pem", "/home/harshal/certs/server.key")
-//	if err != nil {
-//		fmt.Println(err)
-//		//return
-//	}
+	//	cer, err := tls.LoadX509KeyPair("/home/harshal/certs/server.pem", "/home/harshal/certs/server.key")
+	//	if err != nil {
+	//		fmt.Println(err)
+	//		//return
+	//	}
 	base := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
@@ -218,10 +210,10 @@ func PutData(c *cli.Context, name string) {
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).Dial,
-//		TLSHandshakeTimeout: 10 * time.Second,
-//		TLSClientConfig:     &tls.Config{Certificates: []tls.Certificate{cer}},
-//		TLSClientConfig:     endpoints[0].TLSConfig,
-		TLSClientConfig:     &tls.Config{InsecureSkipVerify: true},
+		//		TLSHandshakeTimeout: 10 * time.Second,
+		//		TLSClientConfig:     &tls.Config{Certificates: []tls.Certificate{cer}},
+		//		TLSClientConfig:     endpoints[0].TLSConfig,
+		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 
 		DisableKeepAlives: true,
 	}
@@ -230,12 +222,11 @@ func PutData(c *cli.Context, name string) {
 	if err != nil {
 		//return nil, err
 	}
-//	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
+	//	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
 	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), nil)
 	authTransport := transport.NewTransport(base, modifiers...)
 
 	challengeManager, _, _ := registry.PingV2Registry(endpoints[0], authTransport)
-
 
 	if authConfig.RegistryToken != "" {
 		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
@@ -244,7 +235,7 @@ func PutData(c *cli.Context, name string) {
 		creds := dumbCredentialStore{auth: &authConfig}
 		fmt.Println("CREDS")
 
-	//	tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "push")
+		//	tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "push")
 		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "*")
 		basicHandler := auth.NewBasicHandler(creds)
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
@@ -253,14 +244,12 @@ func PutData(c *cli.Context, name string) {
 	fmt.Println("TRANSPORT")
 	fmt.Println(tr)
 
-
 	client2 := &http.Client{
 		Transport:     tr,
 		CheckRedirect: checkHTTPRedirect,
 		// TODO(dmcgowan): create cookie jar
 	}
 	fmt.Println(client2)
-
 
 	logrus.Debugf("endpoints: %v", endpoints)
 
@@ -273,20 +262,18 @@ func PutData(c *cli.Context, name string) {
 
 	urlBuilder, _ := v2.NewURLBuilderFromString(endpoints[0].URL.String())
 	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
-//	fmt.Println("MANIFeST")
-//	fmt.Println(manifestURL)
-
-
+	//	fmt.Println("MANIFeST")
+	//	fmt.Println(manifestURL)
 
 	mediaType, p, err := deserializedManifestList.Payload()
 	if err != nil {
 		//return "", err
 
 	}
-//	fmt.Println("MEDIA TYPE")
-//	fmt.Println(mediaType)
-//	fmt.Println("Payload")
-//	fmt.Println(p)
+	//	fmt.Println("MEDIA TYPE")
+	//	fmt.Println(mediaType)
+	//	fmt.Println("Payload")
+	//	fmt.Println(p)
 
 	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
 	if err != nil {
@@ -306,9 +293,9 @@ func PutData(c *cli.Context, name string) {
 		fmt.Println(err)
 		//return "", err
 	}
-//	fmt.Println(resp)
-//	fmt.Println(resp.Body)
-//	fmt.Println(resp.Status)
+	//	fmt.Println(resp)
+	//	fmt.Println(resp.Body)
+	//	fmt.Println(resp.Status)
 	defer resp.Body.Close()
 	fmt.Println(resp)
 	contents, err := ioutil.ReadAll(resp.Body)
@@ -323,7 +310,7 @@ func PutData(c *cli.Context, name string) {
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
 		dgst, err := digest.ParseDigest(dgstHeader)
 		if err != nil {
-		//	return "", err
+			//	return "", err
 		}
 		fmt.Println("DIGEST")
 		fmt.Println(dgst)
@@ -332,8 +319,6 @@ func PutData(c *cli.Context, name string) {
 	}
 
 	//	fetcher, _ := newManifestFetcher(endpoints[0], repoInfo, authConfig, registryService)
-
-
 
 }
 
@@ -484,7 +469,6 @@ func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.Reposi
 func getAuthConfig(c *cli.Context, index *registryTypes.IndexInfo) (engineTypes.AuthConfig, error) {
 
 	var (
-
 		username      = c.GlobalString("username")
 		password      = c.GlobalString("password")
 		cfg           = c.GlobalString("docker-cfg")
