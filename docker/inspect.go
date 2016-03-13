@@ -131,17 +131,21 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 
 func PutData(c *cli.Context, filePath string) {
 
-	filename, _ := filepath.Abs(filePath)
+	filename, err := filepath.Abs(filePath)
+	if err != nil {
+		panic(err)
+	}
 	yamlFile, err := ioutil.ReadFile(filename)
+	if err != nil {
+		panic(err)
+	}
 
 	var yamlManifestList YAMLManifestList
 	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
 	if err != nil {
 		panic(err)
 	}
-
-	fmt.Println(yamlManifestList.Image)
-
+	
 	var ListManifest manifestlist.ManifestList
 	err = yaml.Unmarshal(yamlFile, &ListManifest)
 	if err != nil {
