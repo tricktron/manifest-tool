@@ -22,24 +22,24 @@ DOCKER_RUN_DOCKER := $(DOCKER_FLAGS) "$(DOCKER_IMAGE)"
 all: man binary
 
 binary:
-	go build -o ${DEST}skopeo .
+	go build -o ${DEST}stackup .
 
 build-container:
 	docker build ${DOCKER_BUILD_ARGS} -t "$(DOCKER_IMAGE)" .
 
 clean:
-	rm -f skopeo
-	rm -f skopeo.1
+	rm -f stackup
+	rm -f stackup.1
 
 install: install-binary
 	install -m 644 skopeo.1 ${MANINSTALLDIR}/man1/
 
 install-binary:
 	install -d -m 0755 ${INSTALLDIR}
-	install -m 755 skopeo ${INSTALLDIR}
+	install -m 755 stackup ${INSTALLDIR}
 
 man:
-	go-md2man -in man/skopeo.1.md -out skopeo.1
+	go-md2man -in man/stackup.1.md -out stackup.1
 
 shell: build-container
 	$(DOCKER_RUN_DOCKER) bash
