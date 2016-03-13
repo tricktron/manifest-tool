@@ -10,7 +10,7 @@ _Please be aware `stackup` is still work in progress_
 
 Example:
 ```sh
-./stackup /home/harshal/go/src/github.com/runcom/skopeo/listm.yml
+./stackup /home/harshal/listm.yml
 ```
 
 
