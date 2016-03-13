@@ -1,14 +1,7 @@
-THE PROJECT HAS BEEN MOVED TO [projectatomic/skopeo](https://github.com/projectatomic/skopeo)
-=
-skopeo [![Build Status](https://travis-ci.org/runcom/skopeo.svg?branch=master)](https://travis-ci.org/runcom/skopeo)
-=
+_Please be aware `stackup` is still work in progress_
 
-_Please be aware `skopeo` is still work in progress_
+`stackup` is a command line utility to create `list manifests`.
 
-`skopeo` is a command line utility which is able to _inspect_ a repository on a Docker registry.
-By _inspect_ I mean it fetches the repository's manifest and it is able to show you a `docker inspect`-like
-json output about a whole repository or a tag. This tool, in contrast to `docker inspect`, helps you gather useful information about
-a repository or a tag before pulling it (using disk space) - e.g. - which tags are available for the given repository? which labels the image has?
 
 Examples:
 ```sh
