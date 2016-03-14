@@ -67,6 +67,9 @@ _You need Docker installed on your system in order to run the test suite_
 ```sh
 $ make test-integration
 ```
+TODO
+-
+Automatically fill OS and Architechture from digest instead of user putting it in YAML manually
 
 License
 -
