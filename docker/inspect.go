@@ -11,7 +11,7 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-	"os"
+//	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -130,7 +130,7 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 }
 
 func PutData(c *cli.Context, filePath string) {
-
+	fmt.Println("YAML File path - " + filePath)
 	filename, err := filepath.Abs(filePath)
 	if err != nil {
 		panic(err)
@@ -140,6 +140,7 @@ func PutData(c *cli.Context, filePath string) {
 		panic(err)
 	}
 
+	//Parse YAML
 	var yamlManifestList YAMLManifestList
 	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
 	if err != nil {
@@ -152,35 +153,28 @@ func PutData(c *cli.Context, filePath string) {
 		panic(err)
 	}
 
+	fmt.Println("Getting the digests of the image names..,")
 	for i, img := range yamlManifestList.Manifests {
-		imgInsp, _ := GetData(c, img.Image)
+		imgInsp, err := GetData(c, img.Image)
+		if err != nil {
+			panic(err)
+		}
 		imgDigest := imgInsp.Digest
-		fmt.Printf("%+v\n", imgInsp)
-		fmt.Println(imgDigest)
-		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
+		fmt.Println(img.Image + " : " +imgDigest)
+		ListManifest.Manifests[i].Descriptor.Digest, err = digest.ParseDigest(imgDigest)
+		if err != nil {
+			panic(err)
+		}
 		ListManifest.Manifests[i].MediaType = imgInsp.MediaType
-		ListManifest.Manifests[i].Size = 3355
+		ListManifest.Manifests[i].Size = 3355 //hardcoded for testing bug - imgInsp.Size always reports 0
 	}
 
+	// Set the version
 	ListManifest.Versioned = manifestlist.SchemaVersion
-	manifestDescriptors := ListManifest.Manifests
 
-	deserializedManifestList, _ := manifestlist.FromDescriptors(manifestDescriptors)
-	//	var test *manifestlist.DeserializedManifestList
-
-	fmt.Println("JSON")
-
-	//	js , _ := json.Marshal(ListManifest)
-	fmt.Println(deserializedManifestList)
-	fmt.Println("AFter JSON")
-	//fmt.Println(ListManifest)
-
-	//	ref, _ := reference.ParseNamed(name)
+	// Get Named reference for the list manifest
 	ref, _ := reference.ParseNamed(yamlManifestList.Image)
-
 	repoInfo, _ := registry.ParseRepositoryInfo(ref)
-
-	//authConfig, _ := getAuthConfig(c, repoInfo.Index)
 
 	options := &registry.Options{}
 	options.Mirrors = opts.NewListOpts(nil)
@@ -193,23 +187,47 @@ func PutData(c *cli.Context, filePath string) {
 	}
 
 	endpoints, _ := registryService.LookupPushEndpoints(repoInfo.Hostname())
+	logrus.Debugf("endpoints: %v", endpoints)
+	endpoint := endpoints[0]
 
 	repoName := repoInfo.FullName()
 	// If endpoint does not support CanonicalName, use the RemoteName instead
-	if endpoints[0].TrimHostname {
+	if endpoint.TrimHostname {
 		repoName = repoInfo.RemoteName()
 	}
+	logrus.Debugf("repoName: %v", repoName)
 
-	fmt.Println("ENDPOINT")
-	fmt.Println(endpoints[0])
-	fmt.Println(repoInfo)
-	fmt.Println(repoName)
+	// Set the tag to latest, if no tag found in YAML
+	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
+		ref, _ = reference.WithTag(ref, reference.DefaultTag)
 
-	//	cer, err := tls.LoadX509KeyPair("/home/harshal/certs/server.pem", "/home/harshal/certs/server.key")
-	//	if err != nil {
-	//		fmt.Println(err)
-	//		//return
-	//	}
+	}
+	tagged, _ := ref.(reference.NamedTagged)
+	ref, _ = reference.WithTag(ref, tagged.Tag())
+
+	urlBuilder, _ := v2.NewURLBuilderFromString(endpoint.URL.String())
+	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
+	fmt.Println("Manifest url : - " + manifestURL)
+
+	// deserialized manifest is using during upload
+	manifestDescriptors := ListManifest.Manifests
+	deserializedManifestList, err := manifestlist.FromDescriptors(manifestDescriptors)
+	if err != nil {
+		panic(err)
+	}
+	mediaType, p, err := deserializedManifestList.Payload()
+	if err != nil {
+		panic(err)
+
+	}
+	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
+	if err != nil {
+		panic(err)
+	}
+	putRequest.Header.Set("Content-Type", mediaType)
+
+	// get the http transport, this will be used in a client to upload manifest
+	// TODO - add separate function get client
 	base := &http.Transport{
 		Proxy: http.ProxyFromEnvironment,
 		Dial: (&net.Dialer{
@@ -217,124 +235,58 @@ func PutData(c *cli.Context, filePath string) {
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).Dial,
-				TLSHandshakeTimeout: 10 * time.Second,
-		//		TLSClientConfig:     &tls.Config{Certificates: []tls.Certificate{cer}},
-				TLSClientConfig:     endpoints[0].TLSConfig,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig:     endpoint.TLSConfig,
 		//TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 
 		DisableKeepAlives: true,
 	}
-
 	authConfig, err := getAuthConfig(c, repoInfo.Index)
 	if err != nil {
-		//return nil, err
+		panic(err)
 	}
 	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
-	//modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), nil )
 	authTransport := transport.NewTransport(base, modifiers...)
-
-	challengeManager, _, _ := registry.PingV2Registry(endpoints[0], authTransport)
-
+	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
+	if err != nil {
+		panic(err) // This seems to be issue while interacting with local registry
+	}
 	if authConfig.RegistryToken != "" {
 		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, passThruTokenHandler))
 	} else {
 		creds := dumbCredentialStore{auth: &authConfig}
-		fmt.Println("CREDS")
-
-		//	tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "push")
 		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "*")
 		basicHandler := auth.NewBasicHandler(creds)
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
 	}
 	tr := transport.NewTransport(base, modifiers...)
-	fmt.Println("TRANSPORT")
-	fmt.Println(tr)
 
-	client2 := &http.Client{
+	httpClient := &http.Client{
 		Transport:     tr,
 		CheckRedirect: checkHTTPRedirect,
 		// TODO(dmcgowan): create cookie jar
 	}
-	fmt.Println(client2)
 
-	logrus.Debugf("endpoints: %v", endpoints)
-
-	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
-		ref, _ = reference.WithTag(ref, reference.DefaultTag)
-
-	}
-	tagged, _ := ref.(reference.NamedTagged)
-	ref, _ = reference.WithTag(ref, tagged.Tag())
-	fmt.Println("TAG")
-	fmt.Println(ref)
-	fmt.Println(tagged.Tag())
-
-	urlBuilder, _ := v2.NewURLBuilderFromString(endpoints[0].URL.String())
-	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
-	//	fmt.Println("MANIFeST")
-	//	fmt.Println(manifestURL)
-
-	mediaType, p, err := deserializedManifestList.Payload()
+	resp, err := httpClient.Do(putRequest)
 	if err != nil {
-		//return "", err
-
-	}
-	//	fmt.Println("MEDIA TYPE")
-	//	fmt.Println(mediaType)
-	//	fmt.Println("Payload")
-	//	fmt.Println(p)
-
-	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
-	if err != nil {
-		//return "", err
+		panic(err)
 	}
 
-	putRequest.Header.Set("Content-Type", mediaType)
-
-	fmt.Println("PUT REQUEST")
-	fmt.Println(putRequest)
-	contents2, err := ioutil.ReadAll(putRequest.Body)
-	if err != nil {
-		fmt.Printf("%s", err)
-		os.Exit(1)
-	}
-	fmt.Printf("%s\n", string(contents2))
-	fmt.Println("PUT REQUEST")
-	fmt.Printf("%+v\n", putRequest)
-
-	resp, err := client2.Do(putRequest)
-	if err != nil {
-		fmt.Println("ERR")
-		fmt.Println(err)
-		//return "", err
-	}
-	//	fmt.Println(resp)
-	//	fmt.Println(resp.Body)
-	//	fmt.Println(resp.Status)
 	defer resp.Body.Close()
-	fmt.Println(resp)
-	contents, err := ioutil.ReadAll(resp.Body)
-	if err != nil {
-		fmt.Printf("%s", err)
-		os.Exit(1)
-	}
-	fmt.Printf("%s\n", string(contents))
-	fmt.Println(resp.Body)
+
 	fmt.Println(resp.Status)
 	if SuccessStatus(resp.StatusCode) {
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
 		dgst, err := digest.ParseDigest(dgstHeader)
 		if err != nil {
-			//	return "", err
+			panic(err)
 		}
 		fmt.Println("DIGEST")
 		fmt.Println(dgst)
 		fmt.Println("DIGEST")
-		//return dgst, nil
-	}
 
-	//	fetcher, _ := newManifestFetcher(endpoints[0], repoInfo, authConfig, registryService)
+	}
 
 }
 
