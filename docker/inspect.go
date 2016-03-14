@@ -237,7 +237,7 @@ func PutData(c *cli.Context, filePath string) {
 		TLSClientConfig:     endpoint.TLSConfig,
 		//TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 		// Even after setting TLSClientConfig to &tls.Config{InsecureSkipVerify: true}
-		// the local register gives 'oversize record' error
+		// the local registry gives 'oversize record' error
 
 		DisableKeepAlives: true,
 	}
