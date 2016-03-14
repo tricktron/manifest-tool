@@ -159,7 +159,7 @@ func PutData(c *cli.Context, filePath string) {
 		fmt.Println(imgDigest)
 		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
 		ListManifest.Manifests[i].MediaType = imgInsp.MediaType
-
+		ListManifest.Manifests[i].Size = 3355
 	}
 
 	ListManifest.Versioned = manifestlist.SchemaVersion
@@ -530,12 +530,13 @@ func validateRepoName(name string) error {
 	return nil
 }
 
-func makeImageInspect(img *image.Image, tag string, dgst digest.Digest, tagList []string) *types.ImageInspect {
+func makeImageInspect(img *image.Image, tag string, dgst digest.Digest, tagList []string, size int64) *types.ImageInspect {
 	var digest string
 	if err := dgst.Validate(); err == nil {
 		digest = dgst.String()
 	}
 	return &types.ImageInspect{
+		Size:            size,
 		Tag:             tag,
 		Digest:          digest,
 		RepoTags:        tagList,

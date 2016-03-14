@@ -5,6 +5,7 @@ import (
 )
 
 type ImageInspect struct {
+	Size            int64
 	MediaType       string
 	Tag             string
 	Digest          string

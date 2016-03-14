@@ -245,6 +245,7 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 		return nil, errors.New("unsupported manifest format")
 	}
 
+	size := image.Size
 	// TODO(runcom)
 	//var showTags bool
 	//if reference.IsNameOnly(ref) {
@@ -253,7 +254,7 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	//ref = reference.WithDefaultTag(ref)
 	//}
 	//_ = showTags
-	return makeImageInspect(image, tagOrDigest, manifestDigest, tagList), nil
+	return makeImageInspect(image, tagOrDigest, manifestDigest, tagList, size), nil
 }
 
 func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Named, unverifiedManifest *schema1.SignedManifest) (img *image.Image, manifestDigest digest.Digest, err error) {
