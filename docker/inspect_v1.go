@@ -5,7 +5,6 @@ import (
 	"errors"
 	"fmt"
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/registry/client/transport"
@@ -32,9 +31,7 @@ type v1ManifestFetcher struct {
 	session    *registry.Session
 }
 
-func (mf *v1ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref reference.Named) {
 
-}
 func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
 	var (
 		imgInspect *types.ImageInspect

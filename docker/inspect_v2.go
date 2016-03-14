@@ -4,10 +4,6 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
-	"github.com/codegangsta/cli"
-	"gopkg.in/yaml.v2"
-	"io/ioutil"
-	"path/filepath"
 	"runtime"
 
 	"github.com/Sirupsen/logrus"
@@ -17,7 +13,6 @@ import (
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/image"
@@ -56,88 +51,6 @@ type YAMLManifestList struct {
 	Manifests []ManifestDescriptor
 }
 
-func (mf *v2ManifestFetcher) Put(c *cli.Context, ctx context.Context, ref reference.Named) {
-	var (
-		err error
-	)
-
-	//mf.repo, mf.confirmedV2, err = distribution.NewV2Repository(ctx, mf.repoInfo, mf.endpoint, mf.config.MetaHeaders, mf.config.AuthConfig, "pull")
-	mf.repo, mf.confirmedV2, err = dockerdistribution.NewV2Repository(ctx, mf.repoInfo, mf.endpoint, nil, &mf.authConfig, "push")
-	if err != nil {
-		logrus.Debugf("Error getting v2 registry: %v", err)
-		//return nil, err
-	}
-
-	//manifests, err := mf.repo.Manifests(ctx, nil)
-
-	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
-		ref, err = reference.WithTag(ref, reference.DefaultTag)
-		fmt.Println(err)
-	}
-	tagged, _ := ref.(reference.NamedTagged)
-	options := client.WithTag(tagged.Tag())
-	fmt.Println("TAGS")
-	fmt.Println(options)
-	fmt.Println("TAGS")
-
-	ref, err = reference.WithTag(ref, tagged.Tag())
-	//manSvc, err := mf.repo.Manifests(ctx)
-	fmt.Println(mf.endpoint.URL.String())
-	urlBuilder, _ := v2.NewURLBuilderFromString(mf.endpoint.URL.String())
-	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
-
-	fmt.Println(manifestURL)
-
-	filename, _ := filepath.Abs("/home/harshal/go/src/github.com/runcom/skopeo/listm.yml")
-	yamlFile, err := ioutil.ReadFile(filename)
-
-	var yamlManifestList YAMLManifestList
-	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
-	if err != nil {
-		panic(err)
-	}
-
-	var ListManifest manifestlist.ManifestList
-	err = yaml.Unmarshal(yamlFile, &ListManifest)
-	if err != nil {
-		panic(err)
-	}
-
-	for i, img := range yamlManifestList.Manifests {
-
-		imgInsp, _ := GetData(c, img.Image)
-		imgDigest := imgInsp.Digest
-		fmt.Println(imgDigest)
-		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
-
-	}
-
-	fmt.Println(ListManifest)
-	//	yamlFile, err := ioutil.ReadFile(filename)
-
-	//	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//
-	//	putRequest.Header.Set("Content-Type", mediaType)
-	//
-	//	resp, err := ms.client.Do(putRequest)
-	//	if err != nil {
-	//		return "", err
-	//	}
-	//	defer resp.Body.Close()
-	//
-	//	if SuccessStatus(resp.StatusCode) {
-	//		dgstHeader := resp.Header.Get("Docker-Content-Digest")
-	//		dgst, err := digest.ParseDigest(dgstHeader)
-	//		if err != nil {
-	//			return "", err
-	//		}
-	//
-	//		return dgst, nil
-	//	}
-}
 
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
 	var (

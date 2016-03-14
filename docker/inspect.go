@@ -11,7 +11,6 @@ import (
 	"net"
 	"net/http"
 	"net/url"
-//	"os"
 	"path/filepath"
 	"strings"
 	"syscall"
@@ -83,7 +82,6 @@ func (f fallbackError) Error() string {
 
 type manifestFetcher interface {
 	Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error)
-	Put(c *cli.Context, ctx context.Context, ref reference.Named)
 }
 
 func validateName(name string) error {
@@ -153,7 +151,7 @@ func PutData(c *cli.Context, filePath string) {
 		panic(err)
 	}
 
-	fmt.Println("Getting the digests of the image names..,")
+	fmt.Println("Getting the digests of the image names...")
 	for i, img := range yamlManifestList.Manifests {
 		imgInsp, err := GetData(c, img.Image)
 		if err != nil {
@@ -238,6 +236,8 @@ func PutData(c *cli.Context, filePath string) {
 		TLSHandshakeTimeout: 10 * time.Second,
 		TLSClientConfig:     endpoint.TLSConfig,
 		//TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+		// Even after setting TLSClientConfig to &tls.Config{InsecureSkipVerify: true}
+		// the local register gives 'oversize record' error
 
 		DisableKeepAlives: true,
 	}
@@ -265,7 +265,7 @@ func PutData(c *cli.Context, filePath string) {
 	httpClient := &http.Client{
 		Transport:     tr,
 		CheckRedirect: checkHTTPRedirect,
-		// TODO(dmcgowan): create cookie jar
+
 	}
 
 	resp, err := httpClient.Do(putRequest)
@@ -282,9 +282,9 @@ func PutData(c *cli.Context, filePath string) {
 		if err != nil {
 			panic(err)
 		}
-		fmt.Println("DIGEST")
+		fmt.Println("----DIGEST----")
 		fmt.Println(dgst)
-		fmt.Println("DIGEST")
+		fmt.Println("----DIGEST----")
 
 	}
 
