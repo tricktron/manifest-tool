@@ -9,8 +9,13 @@ _Please be aware `stackup` is still work in progress_
 
 
 Example:
+If you don't have docker config file already generated then generate it using,
 ```sh
-./stackup /home/harshal/listm.yml
+docker login
+```
+Docker config file is required for authentication with the repository
+```sh
+./stackup --docker-cfg '/home/harshal/.docker/' /home/harshal/listm.yml
 ```
 Sample YAML:
 ```sh
