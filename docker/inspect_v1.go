@@ -7,6 +7,7 @@ import (
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/docker/distribution"
+	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/registry/client/transport"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/dockerversion"
@@ -64,10 +65,12 @@ func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 		logrus.Debugf("Fallback from error: %s", err)
 		return nil, fallbackError{err: err}
 	}
+
 	imgInspect, err = mf.fetchWithSession(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
+	imgInspect.MediaType = schema1.MediaTypeManifest
 	return imgInspect, nil
 }
 

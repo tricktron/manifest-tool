@@ -2,7 +2,7 @@ package docker
 
 import (
 	"bytes"
-	"crypto/tls"
+//	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -145,7 +145,7 @@ func PutData(c *cli.Context, filePath string) {
 	if err != nil {
 		panic(err)
 	}
-	
+
 	var ListManifest manifestlist.ManifestList
 	err = yaml.Unmarshal(yamlFile, &ListManifest)
 	if err != nil {
@@ -155,13 +155,16 @@ func PutData(c *cli.Context, filePath string) {
 	for i, img := range yamlManifestList.Manifests {
 		imgInsp, _ := GetData(c, img.Image)
 		imgDigest := imgInsp.Digest
+		fmt.Printf("%+v\n", imgInsp)
 		fmt.Println(imgDigest)
 		ListManifest.Manifests[i].Descriptor.Digest, _ = digest.ParseDigest(imgDigest)
+		ListManifest.Manifests[i].MediaType = imgInsp.MediaType
 
 	}
 
 	ListManifest.Versioned = manifestlist.SchemaVersion
 	manifestDescriptors := ListManifest.Manifests
+
 	deserializedManifestList, _ := manifestlist.FromDescriptors(manifestDescriptors)
 	//	var test *manifestlist.DeserializedManifestList
 
@@ -214,10 +217,10 @@ func PutData(c *cli.Context, filePath string) {
 			KeepAlive: 30 * time.Second,
 			DualStack: true,
 		}).Dial,
-		//		TLSHandshakeTimeout: 10 * time.Second,
+				TLSHandshakeTimeout: 10 * time.Second,
 		//		TLSClientConfig:     &tls.Config{Certificates: []tls.Certificate{cer}},
-		//		TLSClientConfig:     endpoints[0].TLSConfig,
-		TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
+				TLSClientConfig:     endpoints[0].TLSConfig,
+		//TLSClientConfig: &tls.Config{InsecureSkipVerify: true},
 
 		DisableKeepAlives: true,
 	}
@@ -226,8 +229,8 @@ func PutData(c *cli.Context, filePath string) {
 	if err != nil {
 		//return nil, err
 	}
-	//	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
-	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), nil)
+	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
+	//modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), nil )
 	authTransport := transport.NewTransport(base, modifiers...)
 
 	challengeManager, _, _ := registry.PingV2Registry(endpoints[0], authTransport)
@@ -263,6 +266,9 @@ func PutData(c *cli.Context, filePath string) {
 	}
 	tagged, _ := ref.(reference.NamedTagged)
 	ref, _ = reference.WithTag(ref, tagged.Tag())
+	fmt.Println("TAG")
+	fmt.Println(ref)
+	fmt.Println(tagged.Tag())
 
 	urlBuilder, _ := v2.NewURLBuilderFromString(endpoints[0].URL.String())
 	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
@@ -288,6 +294,12 @@ func PutData(c *cli.Context, filePath string) {
 
 	fmt.Println("PUT REQUEST")
 	fmt.Println(putRequest)
+	contents2, err := ioutil.ReadAll(putRequest.Body)
+	if err != nil {
+		fmt.Printf("%s", err)
+		os.Exit(1)
+	}
+	fmt.Printf("%s\n", string(contents2))
 	fmt.Println("PUT REQUEST")
 	fmt.Printf("%+v\n", putRequest)
 
@@ -375,6 +387,7 @@ func GetData(c *cli.Context, name string) (*types.ImageInspect, error) {
 
 	for _, endpoint := range endpoints {
 		// make sure I can reach the registry, same as docker pull does
+
 		v1endpoint, err := endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(), nil)
 		if err != nil {
 			return nil, err

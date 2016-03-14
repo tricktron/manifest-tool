@@ -152,6 +152,7 @@ func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 		return nil, err
 	}
 
+
 	imgInspect, err = mf.fetchWithRepository(ctx, ref)
 	if err != nil {
 		if _, ok := err.(fallbackError); ok {
@@ -162,6 +163,7 @@ func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 			return nil, fallbackError{err: err, confirmedV2: mf.confirmedV2, transportOK: true}
 		}
 	}
+	imgInspect.MediaType = schema2.MediaTypeManifest
 	return imgInspect, err
 }
 

@@ -5,6 +5,7 @@ import (
 )
 
 type ImageInspect struct {
+	MediaType       string
 	Tag             string
 	Digest          string
 	RepoTags        []string
