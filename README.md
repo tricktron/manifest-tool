@@ -46,7 +46,7 @@ To build `stackup` you need at least Go 1.5 because it uses the latest `GO15VEND
 ```sh
 $ cd $GOPATH/src
 $ mkdir -p github.com/harche
-$ cd harche
+$ cd github.com/harche
 $ git clone https://github.com/harche/stackup
 $ cd stackup && make binary
 ```
