@@ -1,81 +1,85 @@
-STACKUP - A tool to create List Manifests 
-=
-stackup [![Build Status](https://travis-ci.org/runcom/skopeo.svg?branch=master)](https://travis-ci.org/runcom/skopeo)
-=
+## manifest - A tool to query/create manifest list objects in the Docker Registry v2.3 and above
 
-_Please be aware `stackup` is still work in progress_
+`manifest` is a command line utility to create **manifests list** objects in the Docker registry.
+Manifest lists are defined in the v2.2 image specification and allow for multi-architecture and/or
+multi-OS images to be stored in the Docker registry.
 
-`stackup` is a command line utility to create `list manifests`.
+### Sample Usage
 
-
-Example:
-If you don't have docker config file already generated then generate it using,
+*Note:* For pushing to an authenticated registry like DockerHub, you will need a config generated via
+`docker login`:
 ```sh
 docker login
+<enter your credentials>
 ```
-Docker config file is required for authentication with the repository
+
+The Docker config file generated from the login is required for authentication with the repository
+from the manifest tool:
+
 ```sh
-./stackup --docker-cfg '/home/harshal/.docker/' /home/harshal/listm.yml
+./manifest --docker-cfg '/home/myuser/.docker/' /home/myuser/sample.yml
 ```
-Sample YAML:
-```sh
---- 
-image: pharshal/myListManifest:latest
+
+In the current version, a YAML file defines the images which will be combined into a manifest list
+object. A sample YAML file is shown below.  Note that until `manifest` has cross-repository push
+implemented, the images must be in the same repo and only the tag can differ.
+
+Using a private registry running on port 5000, a sample YAML might look like:
+```
+image: myprivreg:5000/someimage:latest
 manifests: 
   - 
-    image: docker.io/fedora:rawhide
+    image: myprivreg:5000/someimage:ppc64le
     platform: 
-      architecture: ppc64
-      os: Linux
-      variant: ppc64le
+      architecture: ppc64le
+      os: linux
   - 
-    image: docker.io/ubuntu:latest
+    image: myprivreg:5000/someimage:amd64
     platform: 
-      architecture: x86_64
+      architecture: amd64
       features: 
         - sse
-      os: Linux
+      os: linux
 ```
 
 If your cli config is found but it doesn't contain the necessary credentials for the queried registry
-you'll get an error. You can fix this by either logging in (via `docker login`) or providing `--username`
+you'll receive an error. You can fix this by either logging in (via `docker login`) or providing `--username`
 and `--password`.
-Building
+
+### Building
 -
-To build `stackup` you need at least Go 1.5 because it uses the latest `GO15VENDOREXPERIMENT` flag. Also, make sure to clone the repository in your `GOPATH` - otherwise compilation fails.
+To build `manifest` you need either Go 1.6, or Go 1.5 with the variable `GO15VENDOREXPERIMENT` exported.
+Either set up your `$GOPATH` properly, or clone this repository into your `$GOPATH` to allow compilation to
+successfully build the tool.
+
 ```sh
 $ cd $GOPATH/src
-$ mkdir -p github.com/harche
-$ cd github.com/harche
-$ git clone https://github.com/harche/stackup
-$ cd stackup && make binary
+$ mkdir -p github.com/estesp
+$ cd github.com/estesp
+$ git clone https://github.com/estesp/manifest-tool
+$ cd manifest-tool && make binary
 ```
-Man:
--
-To build the man page you need [`go-md2man`](https://github.com/cpuguy83/go-md2man) available on your system, then:
-```
-$ make man
-```
-Installing
--
+
+### Installing
+
 If you built from source:
 ```sh
 $ sudo make install
 ```
-`stackup` is also available from Fedora 23:
-```sh
-sudo dnf install stackup
-```
-Tests
--
-_You need Docker installed on your system in order to run the test suite_
+
+### Tests
+
+**You need Docker installed on your system in order to run the test suite.**
+
 ```sh
 $ make test-integration
 ```
-TODO
--
-Automatically fill OS and Architechture from digest instead of user putting it in YAML manually
 
-License
--
-ASL 2.0
+### TODO
+
+ 1. Cross-repository push support
+ 2. Automatically populate OS and architecture from source manifests?
+
+### License
+
+Apache License 2.0
