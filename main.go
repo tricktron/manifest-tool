@@ -10,16 +10,12 @@ import (
 
 const (
 	version = "0.1.10-dev"
-	usage   = "inspect images on a registry"
+	usage   = "inspect and push manifest list images on a registry"
 )
-
-var inspectCmd = func(c *cli.Context) {
-	inspect(c)
-}
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "stackup"
+	app.Name = "manifest"
 	app.Version = version
 	app.Usage = usage
 	app.Flags = []cli.Flag{
@@ -49,7 +45,12 @@ func main() {
 		}
 		return nil
 	}
-	app.Action = inspectCmd
+	// currently support inspect and pushml
+	app.Commands = []cli.Command{
+		inspectCmd,
+		pushmlCmd,
+	}
+
 	if err := app.Run(os.Args); err != nil {
 		logrus.Fatal(err)
 	}
