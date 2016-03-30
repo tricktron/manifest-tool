@@ -194,6 +194,10 @@ func PutData(c *cli.Context, filePath string) {
 	}
 	logrus.Debugf("repoName: %v", repoName)
 
+	// get rid of hostname so URL is constructed properly
+	_, name := distreference.SplitHostname(ref)
+	ref, _ = reference.ParseNamed(name)
+
 	// Set the tag to latest, if no tag found in YAML
 	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
 		ref, _ = reference.WithTag(ref, reference.DefaultTag)
