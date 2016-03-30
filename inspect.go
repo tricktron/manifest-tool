@@ -1,12 +1,10 @@
 package main
 
 import (
-//	"fmt"
 	"strings"
 
 	"github.com/codegangsta/cli"
-	"github.com/harche/stackup/docker"
-//	"github.com/harche/stackup/types"
+	"github.com/estesp/manifest-tool/docker"
 )
 
 type imgKind int
@@ -20,10 +18,9 @@ const (
 	kindAppc
 )
 
+func inspect(c *cli.Context) {
 
-func inspect(c *cli.Context)  {
-
-	name  := c.Args().First()
+	name := c.Args().First()
 
 	docker.PutData(c, strings.Replace(name, imgTypeDocker, "", -1))
 

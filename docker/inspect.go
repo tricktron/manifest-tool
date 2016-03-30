@@ -2,11 +2,9 @@ package docker
 
 import (
 	"bytes"
-//	"crypto/tls"
 	"encoding/json"
 	"errors"
 	"fmt"
-	"gopkg.in/yaml.v2"
 	"io/ioutil"
 	"net"
 	"net/http"
@@ -26,6 +24,7 @@ import (
 	"github.com/docker/distribution/registry/client"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
+	"github.com/go-yaml/yaml"
 
 	"github.com/docker/docker/api"
 	"github.com/docker/docker/cliconfig"
@@ -38,7 +37,7 @@ import (
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
 	registryTypes "github.com/docker/engine-api/types/registry"
-	"github.com/harche/stackup/types"
+	"github.com/estesp/manifest-tool/types"
 	"golang.org/x/net/context"
 )
 
@@ -158,7 +157,7 @@ func PutData(c *cli.Context, filePath string) {
 			panic(err)
 		}
 		imgDigest := imgInsp.Digest
-		fmt.Println(img.Image + " : " +imgDigest)
+		fmt.Println(img.Image + " : " + imgDigest)
 		ListManifest.Manifests[i].Descriptor.Digest, err = digest.ParseDigest(imgDigest)
 		if err != nil {
 			panic(err)
@@ -265,7 +264,6 @@ func PutData(c *cli.Context, filePath string) {
 	httpClient := &http.Client{
 		Transport:     tr,
 		CheckRedirect: checkHTTPRedirect,
-
 	}
 
 	resp, err := httpClient.Do(putRequest)

@@ -1,45 +1,36 @@
-FROM fedora
+FROM debian:jessie
 
-RUN dnf -y update && dnf install -y make git golang golang-github-cpuguy83-go-md2man \
-	# registry v1 deps
-	xz-devel \
-	python-devel \
-	python-pip \
-	swig \
-	redhat-rpm-config \
-	openssl-devel \
-	patch
+RUN apt-get update && apt-get install -y make git apt-utils curl vim gcc
 
-# Install three versions of the registry. The first is an older version that
-# only supports schema1 manifests. The second is a newer version that supports
-# both. This allows integration-cli tests to cover push/pull with both schema1
-# and schema2 manifests. Install registry v1 also.
-ENV REGISTRY_COMMIT_SCHEMA1 ec87e9b6971d831f0eff752ddb54fb64693e51cd
+ENV GO_VERSION 1.6
+RUN curl -fsSL "https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz" \
+	| tar -xzC /usr/local
+ENV PATH /go/bin:/usr/local/go/bin:$PATH
+ENV GOPATH /go
+
+ENV GO_TOOLS_COMMIT 823804e1ae08dbb14eb807afc7db9993bc9e3cc3
+# Grab Go's cover tool for dead-simple code coverage testing
+# Grab Go's vet tool for examining go code to find suspicious constructs
+# and help prevent errors that the compiler might not catch
+RUN git clone https://github.com/golang/tools.git /go/src/golang.org/x/tools \
+	&& (cd /go/src/golang.org/x/tools && git checkout -q $GO_TOOLS_COMMIT) \
+	&& go install -v golang.org/x/tools/cmd/cover \
+	&& go install -v golang.org/x/tools/cmd/vet
+# Grab Go's lint tool
+ENV GO_LINT_COMMIT 32a87160691b3c96046c0c678fe57c5bef761456
+RUN git clone https://github.com/golang/lint.git /go/src/github.com/golang/lint \
+	&& (cd /go/src/github.com/golang/lint && git checkout -q $GO_LINT_COMMIT) \
+	&& go install -v github.com/golang/lint/golint
+
 ENV REGISTRY_COMMIT 47a064d4195a9b56133891bbb13620c3ac83a827
 RUN set -x \
 	&& export GOPATH="$(mktemp -d)" \
 	&& git clone https://github.com/docker/distribution.git "$GOPATH/src/github.com/docker/distribution" \
 	&& (cd "$GOPATH/src/github.com/docker/distribution" && git checkout -q "$REGISTRY_COMMIT") \
 	&& GOPATH="$GOPATH/src/github.com/docker/distribution/Godeps/_workspace:$GOPATH" \
-		go build -o /usr/local/bin/registry-v2 github.com/docker/distribution/cmd/registry \
-	&& (cd "$GOPATH/src/github.com/docker/distribution" && git checkout -q "$REGISTRY_COMMIT_SCHEMA1") \
-	&& GOPATH="$GOPATH/src/github.com/docker/distribution/Godeps/_workspace:$GOPATH" \
-		go build -o /usr/local/bin/registry-v2-schema1 github.com/docker/distribution/cmd/registry \
-	&& rm -rf "$GOPATH" \
-	&& export DRV1="$(mktemp -d)" \
-	&& git clone https://github.com/docker/docker-registry.git "$DRV1" \
-	# no need for setuptools since we have a version conflict with fedora
-	&& sed -i.bak s/setuptools==5.8//g "$DRV1/requirements/main.txt" \
-	&& sed -i.bak s/setuptools==5.8//g "$DRV1/depends/docker-registry-core/requirements/main.txt" \
-	&& pip install "$DRV1/depends/docker-registry-core" \
-	&& pip install file://"$DRV1#egg=docker-registry[bugsnag,newrelic,cors]" \
-	&& patch $(python -c 'import boto; import os; print os.path.dirname(boto.__file__)')/connection.py \
-		< "$DRV1/contrib/boto_header_patch.diff" \
-	&& dnf -y update && dnf install -y m2crypto
+		go build -o /usr/local/bin/registry github.com/docker/distribution/cmd/registry \
+	&& rm -rf "$GOPATH"
 
-ENV GOPATH /usr/share/gocode:/go
-WORKDIR /go/src/github.com/runcom/skopeo
+WORKDIR /go/src/github.com/estesp/manifest-tool
 
-COPY . /go/src/github.com/runcom/skopeo
-
-#ENTRYPOINT ["hack/dind"]
+COPY . /go/src/github.com/estesp/manifest-tool

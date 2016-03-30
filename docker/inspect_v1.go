@@ -4,6 +4,8 @@ import (
 	"encoding/json"
 	"errors"
 	"fmt"
+	"strings"
+
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/schema1"
@@ -15,9 +17,8 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
-	"github.com/harche/stackup/types"
+	"github.com/estesp/manifest-tool/types"
 	"golang.org/x/net/context"
-	"strings"
 )
 
 type v1ManifestFetcher struct {
@@ -30,7 +31,6 @@ type v1ManifestFetcher struct {
 	service    *registry.Service
 	session    *registry.Session
 }
-
 
 func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
 	var (

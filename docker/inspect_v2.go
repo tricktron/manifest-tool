@@ -20,7 +20,7 @@ import (
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	engineTypes "github.com/docker/engine-api/types"
-	"github.com/harche/stackup/types"
+	"github.com/estesp/manifest-tool/types"
 	"golang.org/x/net/context"
 )
 
@@ -51,7 +51,6 @@ type YAMLManifestList struct {
 	Manifests []ManifestDescriptor
 }
 
-
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
 	var (
 		imgInspect *types.ImageInspect
@@ -64,7 +63,6 @@ func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 		logrus.Debugf("Error getting v2 registry: %v", err)
 		return nil, err
 	}
-
 
 	imgInspect, err = mf.fetchWithRepository(ctx, ref)
 	if err != nil {

@@ -1,32 +1,32 @@
 #!/usr/bin/env bash
 set -e
 
-# This script builds various binary from a checkout of the skopeo
+# This script builds various binary from a checkout of the manifest-tool
 # source code.
 #
 # Requirements:
-# - The current directory should be a checkout of the skopeo source code
-#   (https://github.com/runcom/skopeo). Whatever version is checked out
+# - The current directory should be a checkout of the manifest-tool source code
+#   (https://github.com/estesp/manifest-tool). Whatever version is checked out
 #   will be built.
 # - The script is intended to be run inside the docker container specified
 #   in the Dockerfile at the root of the source. In other words:
 #   DO NOT CALL THIS SCRIPT DIRECTLY.
 # - The right way to call this script is to invoke "make" from
-#   your checkout of the skopeo repository.
-#   the Makefile will do a "docker build -t skopeo ." and then
+#   your checkout of the manifest-tool repository.
+#   the Makefile will do a "docker build -t manifest-tool ." and then
 #   "docker run hack/make.sh" in the resulting image.
 #
 
 set -o pipefail
 
-export SKOPEO_PKG='github.com/runcom/skopeo'
+export MANIFEST_PKG='github.com/estesp/manifest-tool'
 export SCRIPTDIR="$( cd "$( dirname "${BASH_SOURCE[0]}" )" && pwd )"
 export MAKEDIR="$SCRIPTDIR/make"
 
 # We're a nice, sexy, little shell script, and people might try to run us;
 # but really, they shouldn't. We want to be in a container!
 inContainer="AssumeSoInitially"
-if [ "$PWD" != "/go/src/$SKOPEO_PKG" ]; then
+if [ "$PWD" != "/go/src/$MANIFEST_PKG" ]; then
 	unset inContainer
 fi
 
@@ -43,11 +43,6 @@ fi
 
 echo
 
-# List of bundles to create when no argument is passed
-# TODO(runcom): these are the one left from Docker...for now
-# test-unit
-# validate-dco
-# cover
 DEFAULT_BUNDLES=(
 	validate-gofmt
 	validate-lint
@@ -72,7 +67,7 @@ TESTFLAGS+=" -test.timeout=10m"
 go_test_dir() {
 	dir=$1
 	(
-		echo '+ go test' $TESTFLAGS "${SKOPEO_PKG}${dir#.}"
+		echo '+ go test' $TESTFLAGS "${MANIFEST_PKG}${dir#.}"
 		cd "$dir"
 		export DEST="$ABS_DEST" # we're in a subshell, so this is safe -- our integration-cli tests need DEST, and "cd" screws it up
 		go test $TESTFLAGS
