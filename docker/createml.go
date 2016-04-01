@@ -13,7 +13,6 @@ import (
 	"github.com/codegangsta/cli"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/manifestlist"
-	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
@@ -54,7 +53,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 
-		logrus.Info("Image %q is digest %s", img.Image, imgInsp.Digest)
+		logrus.Infof("Image %q is digest %s", img.Image, imgInsp.Digest)
 		listManifest.Manifests[i].Descriptor.Digest, err = digest.ParseDigest(imgInsp.Digest)
 		if err != nil {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
@@ -88,12 +87,12 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	// If endpoint does not support CanonicalName, use the RemoteName instead
 	if endpoint.TrimHostname {
 		repoName = repoInfo.RemoteName()
+		logrus.Debugf("repoName: %v", repoName)
 	}
-	logrus.Debugf("repoName: %v", repoName)
-
 	// get rid of hostname so URL is constructed properly
-	_, name := distreference.SplitHostname(ref)
+	hostname, name := splitHostname(ref.String())
 	ref, _ = reference.ParseNamed(name)
+	logrus.Debugf("hostname: %q; repoName: %q", hostname, name)
 
 	// Set the tag to latest, if no tag found in YAML
 	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
@@ -114,6 +113,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Cannot deserialize manifest list: %v", err)
 	}
 	mediaType, p, err := deserializedManifestList.Payload()
+	logrus.Debugf("mediaType of manifestList: %s", mediaType)
 	if err != nil {
 		return "", fmt.Errorf("Cannot retrieve payload for HTTP PUT of manifest list: %v", err)
 

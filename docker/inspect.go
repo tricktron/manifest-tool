@@ -33,6 +33,15 @@ import (
 	"golang.org/x/net/context"
 )
 
+const (
+	// DefaultHostname is the default built-in registry (DockerHub)
+	DefaultHostname = "docker.io"
+	// LegacyDefaultHostname is the old hostname used for DockerHub
+	LegacyDefaultHostname = "index.docker.io"
+	// DefaultRepoPrefix is the prefix used for official images in DockerHub
+	DefaultRepoPrefix = "library/"
+)
+
 type existingTokenHandler struct {
 	token string
 }
@@ -80,11 +89,30 @@ func validateName(name string) error {
 	if err != nil {
 		return err
 	}
-	hostname, _ := distreference.SplitHostname(distref)
+	hostname, _ := splitHostname(distref.String())
 	if hostname == "" {
 		return fmt.Errorf("Please use a fully qualified repository name")
 	}
 	return nil
+}
+
+// splitHostname splits a repository name to hostname and remotename string.
+// If no valid hostname is found, the default hostname is used. Repository name
+// needs to be already validated before.
+func splitHostname(name string) (hostname, remoteName string) {
+	i := strings.IndexRune(name, '/')
+	if i == -1 || (!strings.ContainsAny(name[:i], ".:") && name[:i] != "localhost") {
+		hostname, remoteName = DefaultHostname, name
+	} else {
+		hostname, remoteName = name[:i], name[i+1:]
+	}
+	if hostname == LegacyDefaultHostname {
+		hostname = DefaultHostname
+	}
+	if hostname == DefaultHostname && !strings.ContainsRune(remoteName, '/') {
+		remoteName = DefaultRepoPrefix + remoteName
+	}
+	return
 }
 
 func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
