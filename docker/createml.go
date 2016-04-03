@@ -53,13 +53,13 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 
-		logrus.Infof("Image %q is digest %s", img.Image, imgInsp.Digest)
 		listManifest.Manifests[i].Descriptor.Digest, err = digest.ParseDigest(imgInsp.Digest)
 		if err != nil {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
 		listManifest.Manifests[i].MediaType = imgInsp.MediaType
-		listManifest.Manifests[i].Size = 3355 //TODO: how to get actual size?
+		listManifest.Manifests[i].Size = imgInsp.Size
+		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgInsp.Digest, imgInsp.Size)
 	}
 
 	// Set the schema version

@@ -157,14 +157,6 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	}
 
 	size := image.Size
-	// TODO(runcom)
-	//var showTags bool
-	//if reference.IsNameOnly(ref) {
-	//showTags = true
-	//logrus.Debug("Using default tag: latest")
-	//ref = reference.WithDefaultTag(ref)
-	//}
-	//_ = showTags
 	return makeImageInspect(image, tagOrDigest, manifestDigest, tagList, size), nil
 }
 
@@ -215,6 +207,10 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 	}
 
 	manifestDigest = digest.FromBytes(unverifiedManifest.Canonical)
+
+	// add the size of the manifest to the image response; needed for assembling proper
+	// manifest lists
+	img.Size = int64(len(unverifiedManifest.Canonical))
 
 	return img, manifestDigest, nil
 }
@@ -346,6 +342,13 @@ func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Name
 	if err != nil {
 		return nil, "", err
 	}
+	// add the size of the manifest to the image response; needed for assembling proper
+	// manifest lists
+	_, mfBytes, err := mfst.Payload()
+	if err != nil {
+		return nil, "", err
+	}
+	img.Size = int64(len(mfBytes))
 
 	return img, manifestDigest, nil
 }
