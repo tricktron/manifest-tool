@@ -24,30 +24,26 @@ import (
 	"github.com/docker/docker/registry"
 )
 
-// YAMLManifestList represents the YAML format input to the pushml
+// YAMLInput represents the YAML format input to the pushml
 // command.
-type YAMLManifestList struct {
+type YAMLInput struct {
 	Image     string
-	Manifests []ManifestDescriptor
+	Manifests []ManifestEntry
 }
 
-// ManifestDescriptor represents an entry in a manifest list object
-// from the Docker Registry v2.2 image spec
-type ManifestDescriptor struct {
+// ManifestEntry represents an entry in the list of manifests to
+// be combined into a manifest list, provided via the YAML input
+type ManifestEntry struct {
 	Image    string
-	Platform Platform
-}
-
-// Platform represents the platform content defined in the manifest
-// list object in the Docker Registry v2.2 image spec
-type Platform struct {
-	Architecture string
-	OS           string
-	Variant      string
-	Features     []string
+	Platform manifestlist.PlatformSpec
 }
 
 func PutManifestList(c *cli.Context, filePath string) (string, error) {
+	var (
+		yamlInput    YAMLInput
+		manifestList manifestlist.ManifestList
+	)
+
 	filename, err := filepath.Abs(filePath)
 	if err != nil {
 		return "", fmt.Errorf("Can't resolve path to %q: %v", filePath, err)
@@ -56,41 +52,44 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Can't read YAML file %q: %v", filePath, err)
 	}
-
-	var yamlManifestList YAMLManifestList
-	err = yaml.Unmarshal(yamlFile, &yamlManifestList)
+	err = yaml.Unmarshal(yamlFile, &yamlInput)
 	if err != nil {
 		return "", fmt.Errorf("Can't unmarshal YAML file %q: %v", filePath, err)
 	}
 
-	var listManifest manifestlist.ManifestList
-	err = yaml.Unmarshal(yamlFile, &listManifest)
-	if err != nil {
-		return "", fmt.Errorf("Can't unmarshal YAML file (%q) to list manifest: %v", filePath, err)
-	}
+	// Set the schema version
+	manifestList.Versioned = manifestlist.SchemaVersion
 
 	logrus.Info("Retrieving digests of images...")
-	for i, img := range yamlManifestList.Manifests {
+	for _, img := range yamlInput.Manifests {
 		imgInsp, err := GetData(c, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 
-		listManifest.Manifests[i].Descriptor.Digest, err = digest.ParseDigest(imgInsp.Digest)
+		manifest := manifestlist.ManifestDescriptor{
+			Platform: img.Platform,
+		}
+		manifest.Descriptor.Digest, err = digest.ParseDigest(imgInsp.Digest)
+		manifest.Size = imgInsp.Size
+		manifest.MediaType = imgInsp.MediaType
+
 		if err != nil {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
-		listManifest.Manifests[i].MediaType = imgInsp.MediaType
-		listManifest.Manifests[i].Size = imgInsp.Size
 		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgInsp.Digest, imgInsp.Size)
+		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
-	// Set the schema version
-	listManifest.Versioned = manifestlist.SchemaVersion
-
-	// Get Named reference for the list manifest
-	ref, _ := reference.ParseNamed(yamlManifestList.Image)
-	repoInfo, _ := registry.ParseRepositoryInfo(ref)
+	// process the final image name reference for the manifest list
+	ref, err := reference.ParseNamed(yamlInput.Image)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+	}
+	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
+	}
 
 	options := &registry.Options{}
 	options.Mirrors = opts.NewListOpts(nil)
@@ -129,9 +128,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
 	logrus.Debugf("Manifest url: %s", manifestURL)
 
-	// deserialized manifest is using during upload
-	manifestDescriptors := listManifest.Manifests
-	deserializedManifestList, err := manifestlist.FromDescriptors(manifestDescriptors)
+	deserializedManifestList, err := manifestlist.FromDescriptors(manifestList.Manifests)
 	if err != nil {
 		return "", fmt.Errorf("Cannot deserialize manifest list: %v", err)
 	}
