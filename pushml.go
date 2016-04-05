@@ -13,17 +13,10 @@ var pushmlCmd = cli.Command{
 	Usage: "push a manifest list to a registry via a YAML config",
 	Action: func(c *cli.Context) {
 
-		digest, err := pushManifestList(c)
+		digest, err := docker.PutManifestList(c, c.Args().First())
 		if err != nil {
 			logrus.Fatal(err)
 		}
 		fmt.Printf("Digest: %s\n", digest)
 	},
-}
-
-func pushManifestList(c *cli.Context) (string, error) {
-
-	yamlFile := c.Args().First()
-
-	return docker.PutManifestList(c, yamlFile)
 }

@@ -24,6 +24,29 @@ import (
 	"github.com/docker/docker/registry"
 )
 
+// YAMLManifestList represents the YAML format input to the pushml
+// command.
+type YAMLManifestList struct {
+	Image     string
+	Manifests []ManifestDescriptor
+}
+
+// ManifestDescriptor represents an entry in a manifest list object
+// from the Docker Registry v2.2 image spec
+type ManifestDescriptor struct {
+	Image    string
+	Platform Platform
+}
+
+// Platform represents the platform content defined in the manifest
+// list object in the Docker Registry v2.2 image spec
+type Platform struct {
+	Architecture string
+	OS           string
+	Variant      string
+	Features     []string
+}
+
 func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	filename, err := filepath.Abs(filePath)
 	if err != nil {

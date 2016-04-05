@@ -9,7 +9,7 @@ import (
 )
 
 const (
-	version = "0.1.10-dev"
+	version = "0.2"
 	usage   = "inspect and push manifest list images on a registry"
 )
 

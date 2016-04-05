@@ -29,26 +29,8 @@ type v2ManifestFetcher struct {
 	repoInfo    *registry.RepositoryInfo
 	repo        distribution.Repository
 	confirmedV2 bool
-	// wrap in a config?
-	authConfig engineTypes.AuthConfig
-	service    *registry.Service
-}
-
-type Platform struct {
-	//image string
-	Architecture string
-	OS           string
-	Variant      string
-	Features     []string
-}
-type ManifestDescriptor struct {
-	Image    string
-	Platform Platform
-}
-
-type YAMLManifestList struct {
-	Image     string
-	Manifests []ManifestDescriptor
+	authConfig  engineTypes.AuthConfig
+	service     *registry.Service
 }
 
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
@@ -57,7 +39,6 @@ func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 		err        error
 	)
 
-	//mf.repo, mf.confirmedV2, err = distribution.NewV2Repository(ctx, mf.repoInfo, mf.endpoint, mf.config.MetaHeaders, mf.config.AuthConfig, "pull")
 	mf.repo, mf.confirmedV2, err = dockerdistribution.NewV2Repository(ctx, mf.repoInfo, mf.endpoint, nil, &mf.authConfig, "pull")
 	if err != nil {
 		logrus.Debugf("Error getting v2 registry: %v", err)
