@@ -62,7 +62,12 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
-		imgInsp, err := GetData(c, img.Image)
+		imgsInsp, err := GetData(c, img.Image)
+		if len(imgsInsp) > 1 {
+			// too many responses--can only happen if a manifest list was returned for the name lookup
+			return "", fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion.")
+		}
+		imgInsp := imgsInsp[0]
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}

@@ -81,7 +81,7 @@ func (f fallbackError) Error() string {
 }
 
 type manifestFetcher interface {
-	Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error)
+	Fetch(ctx context.Context, ref reference.Named) ([]types.ImageInspect, error)
 }
 
 func validateName(name string) error {
@@ -146,7 +146,7 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func GetData(c *cli.Context, name string) (*types.ImageInspect, error) {
+func GetData(c *cli.Context, name string) ([]types.ImageInspect, error) {
 	if err := validateName(name); err != nil {
 		return nil, err
 	}
@@ -185,7 +185,7 @@ func GetData(c *cli.Context, name string) (*types.ImageInspect, error) {
 		ctx                    = context.Background()
 		lastErr                error
 		discardNoSupportErrors bool
-		imgInspect             *types.ImageInspect
+		foundImages            []types.ImageInspect
 		confirmedV2            bool
 		confirmedTLSRegistries = make(map[string]struct{})
 	)
@@ -218,15 +218,13 @@ func GetData(c *cli.Context, name string) (*types.ImageInspect, error) {
 
 		logrus.Debugf("Trying to fetch image manifest of %s repository from %s %s", repoInfo.Name(), endpoint.URL, endpoint.Version)
 
-		//fetcher, err := newManifestFetcher(endpoint, repoInfo, config)
 		fetcher, err := newManifestFetcher(endpoint, repoInfo, authConfig, registryService)
 		if err != nil {
 			lastErr = err
 			continue
 		}
 
-		//fetcher.Put(c, ctx, ref)
-		if imgInspect, err = fetcher.Fetch(ctx, ref); err != nil {
+		if foundImages, err = fetcher.Fetch(ctx, ref); err != nil {
 			// Was this fetch cancelled? If so, don't try to fall back.
 			fallback := false
 			select {
@@ -258,7 +256,7 @@ func GetData(c *cli.Context, name string) (*types.ImageInspect, error) {
 			return nil, err
 		}
 
-		return imgInspect, nil
+		return foundImages, nil
 	}
 
 	if lastErr == nil {
@@ -300,16 +298,6 @@ func getAuthConfig(c *cli.Context, index *registryTypes.IndexInfo) (engineTypes.
 			Email:    "stub@example.com",
 		}
 	)
-
-	//
-	// FINAL TODO(runcom): avoid returning empty config! just fallthrough and return
-	// the first useful authconfig
-	//
-
-	// TODO(runcom): ??? atomic needs this
-	// TODO(runcom): implement this to opt-in for docker-cfg, no need to make this
-	// work by default with docker's conf
-	//useDockerConf := c.GlobalString("use-docker-cfg")
 
 	if username != "" && password != "" {
 		return defAuthConfig, nil

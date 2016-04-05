@@ -32,13 +32,12 @@ type v1ManifestFetcher struct {
 	session    *registry.Session
 }
 
-func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
-	var (
-		imgInspect *types.ImageInspect
-	)
+func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) ([]types.ImageInspect, error) {
 	if _, isCanonical := ref.(reference.Canonical); isCanonical {
 		// Allowing fallback, because HTTPS v1 is before HTTP v2
-		return nil, fallbackError{err: dockerdistribution.ErrNoSupport{errors.New("Cannot pull by digest with v1 registry")}}
+		return nil, fallbackError{
+			err: dockerdistribution.ErrNoSupport{errors.New("Cannot pull by digest with v1 registry")},
+		}
 	}
 	tlsConfig, err := mf.service.TLSConfig(mf.repoInfo.Index.Name)
 	if err != nil {
@@ -63,15 +62,22 @@ func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) (*t
 		return nil, fallbackError{err: err}
 	}
 
-	imgInspect, err = mf.fetchWithSession(ctx, ref)
+	imgsInspect, err := mf.fetchWithSession(ctx, ref)
 	if err != nil {
 		return nil, err
 	}
-	imgInspect.MediaType = schema1.MediaTypeManifest
-	return imgInspect, nil
+	if len(imgsInspect) > 1 {
+		return nil, fmt.Errorf("Found more than one image in V1 fetch!? %v", imgsInspect)
+	}
+	imgsInspect[0].MediaType = schema1.MediaTypeManifest
+	return imgsInspect, nil
 }
 
-func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference.Named) (*types.ImageInspect, error) {
+func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference.Named) ([]types.ImageInspect, error) {
+	var (
+		imageList = []types.ImageInspect{}
+		pulledImg *image.Image
+	)
 	repoData, err := mf.session.GetRepositoryData(mf.repoInfo)
 	if err != nil {
 		if strings.Contains(err.Error(), "HTTP code: 404") {
@@ -119,7 +125,6 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 
 	img := repoData.ImgList[tagID]
 
-	var pulledImg *image.Image
 	for _, ep := range mf.repoInfo.Index.Mirrors {
 		if pulledImg, err = mf.pullImageJSON(img.ID, ep, repoData.Tokens); err != nil {
 			// Don't report errors when pulling from mirrors.
@@ -146,7 +151,9 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 	}
 
 	size := pulledImg.Size
-	return makeImageInspect(pulledImg, tag, "", tagList, size), nil
+	imageInsp := makeImageInspect(pulledImg, tag, "", tagList, size)
+	imageList = append(imageList, *imageInsp)
+	return imageList, nil
 }
 
 func (mf *v1ManifestFetcher) pullImageJSON(imgID, endpoint string, token []string) (*image.Image, error) {
