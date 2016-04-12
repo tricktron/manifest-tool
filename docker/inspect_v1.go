@@ -151,7 +151,7 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 	}
 
 	size := pulledImg.Size
-	imageInsp := makeImageInspect(pulledImg, tag, "", tagList, size)
+	imageInsp := makeImageInspect(pulledImg, tag, "", schema1.MediaTypeManifest, tagList, size)
 	imageList = append(imageList, *imageInsp)
 	return imageList, nil
 }
