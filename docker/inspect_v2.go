@@ -33,6 +33,12 @@ type v2ManifestFetcher struct {
 	service     *registry.Service
 }
 
+type manifestInfo struct {
+	blobDigests []digest.Digest
+	digest      digest.Digest
+	length      int64
+}
+
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) ([]types.ImageInspect, error) {
 	var err error
 
@@ -113,30 +119,30 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	}
 
 	var (
-		images          []*image.Image
-		manifestDigests []digest.Digest
-		mediaType       []string
+		images    []*image.Image
+		mfInfos   []manifestInfo
+		mediaType []string
 	)
 
 	switch v := manifest.(type) {
 	case *schema1.SignedManifest:
-		image, manifestDigest, err := mf.pullSchema1(ctx, ref, v)
+		image, mfInfo, err := mf.pullSchema1(ctx, ref, v)
 		images = append(images, image)
-		manifestDigests = append(manifestDigests, manifestDigest)
+		mfInfos = append(mfInfos, mfInfo)
 		mediaType = append(mediaType, schema1.MediaTypeManifest)
 		if err != nil {
 			return nil, err
 		}
 	case *schema2.DeserializedManifest:
-		image, manifestDigest, err := mf.pullSchema2(ctx, ref, v)
+		image, mfInfo, err := mf.pullSchema2(ctx, ref, v)
 		images = append(images, image)
-		manifestDigests = append(manifestDigests, manifestDigest)
+		mfInfos = append(mfInfos, mfInfo)
 		mediaType = append(mediaType, schema2.MediaTypeManifest)
 		if err != nil {
 			return nil, err
 		}
 	case *manifestlist.DeserializedManifestList:
-		images, manifestDigests, mediaType, err = mf.pullManifestList(ctx, ref, v)
+		images, mfInfos, mediaType, err = mf.pullManifestList(ctx, ref, v)
 		if err != nil {
 			return nil, err
 		}
@@ -145,24 +151,24 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	}
 
 	for idx, img := range images {
-		size := img.Size
-		imgReturn := makeImageInspect(img, tagOrDigest, manifestDigests[idx], mediaType[idx], tagList, size)
+		imgReturn := makeImageInspect(img, tagOrDigest, mfInfos[idx], mediaType[idx], tagList)
 		imageList = append(imageList, *imgReturn)
 	}
 	return imageList, nil
 }
 
-func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Named, unverifiedManifest *schema1.SignedManifest) (img *image.Image, manifestDigest digest.Digest, err error) {
+func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Named, unverifiedManifest *schema1.SignedManifest) (img *image.Image, mfInfo manifestInfo, err error) {
+	mfInfo = manifestInfo{}
 	var verifiedManifest *schema1.Manifest
 	verifiedManifest, err = verifySchema1Manifest(unverifiedManifest, ref)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 
 	// remove duplicate layers and check parent chain validity
 	err = fixManifestLayers(verifiedManifest)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 
 	// Image history converted to the new format
@@ -175,14 +181,15 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 			ThrowAway bool `json:"throwaway,omitempty"`
 		}
 		if err := json.Unmarshal([]byte(verifiedManifest.History[i].V1Compatibility), &throwAway); err != nil {
-			return nil, "", err
+			return nil, mfInfo, err
 		}
 
 		h, err := v1.HistoryFromConfig([]byte(verifiedManifest.History[i].V1Compatibility), throwAway.ThrowAway)
 		if err != nil {
-			return nil, "", err
+			return nil, mfInfo, err
 		}
 		history = append(history, h)
+		mfInfo.blobDigests = append(mfInfo.blobDigests, verifiedManifest.FSLayers[i].BlobSum)
 	}
 
 	rootFS := image.NewRootFS()
@@ -190,21 +197,20 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 
 	config, err := json.Marshal(configRaw)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 
 	img, err = image.NewFromJSON(config)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 
-	manifestDigest = digest.FromBytes(unverifiedManifest.Canonical)
-
-	// add the size of the manifest to the image response; needed for assembling proper
+	mfInfo.digest = digest.FromBytes(unverifiedManifest.Canonical)
+	// add the size of the manifest to the info struct; needed for assembling proper
 	// manifest lists
-	img.Size = int64(len(unverifiedManifest.Canonical))
+	mfInfo.length = int64(len(unverifiedManifest.Canonical))
 
-	return img, manifestDigest, nil
+	return img, mfInfo, nil
 }
 
 func verifySchema1Manifest(signedManifest *schema1.SignedManifest, ref reference.Named) (m *schema1.Manifest, err error) {
@@ -285,10 +291,10 @@ func fixManifestLayers(m *schema1.Manifest) error {
 	return nil
 }
 
-func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Named, mfst *schema2.DeserializedManifest) (img *image.Image, manifestDigest digest.Digest, err error) {
-	manifestDigest, err = schema2ManifestDigest(ref, mfst)
+func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Named, mfst *schema2.DeserializedManifest) (img *image.Image, mfInfo manifestInfo, err error) {
+	mfInfo.digest, err = schema2ManifestDigest(ref, mfst)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 
 	target := mfst.Target()
@@ -316,33 +322,36 @@ func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Name
 	if runtime.GOOS == "windows" {
 		configJSON, unmarshalledConfig, err = receiveConfig(configChan, errChan)
 		if err != nil {
-			return nil, "", err
+			return nil, mfInfo, err
 		}
 		if unmarshalledConfig.RootFS == nil {
-			return nil, "", errors.New("image config has no rootfs section")
+			return nil, mfInfo, errors.New("image config has no rootfs section")
 		}
 	}
 
 	if configJSON == nil {
 		configJSON, unmarshalledConfig, err = receiveConfig(configChan, errChan)
 		if err != nil {
-			return nil, "", err
+			return nil, mfInfo, err
 		}
 	}
 
+	for _, descriptor := range mfst.References() {
+		mfInfo.blobDigests = append(mfInfo.blobDigests, descriptor.Digest)
+	}
 	img, err = image.NewFromJSON(configJSON)
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
 	// add the size of the manifest to the image response; needed for assembling proper
 	// manifest lists
 	_, mfBytes, err := mfst.Payload()
 	if err != nil {
-		return nil, "", err
+		return nil, mfInfo, err
 	}
-	img.Size = int64(len(mfBytes))
+	mfInfo.length = int64(len(mfBytes))
 
-	return img, manifestDigest, nil
+	return img, mfInfo, nil
 }
 
 func (mf *v2ManifestFetcher) pullSchema2ImageConfig(ctx context.Context, dgst digest.Digest) (configJSON []byte, err error) {
@@ -445,10 +454,10 @@ func schema2ManifestDigest(ref reference.Named, mfst distribution.Manifest) (dig
 
 // pullManifestList handles "manifest lists" which point to various
 // platform-specifc manifests.
-func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference.Named, mfstList *manifestlist.DeserializedManifestList) ([]*image.Image, []digest.Digest, []string, error) {
+func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference.Named, mfstList *manifestlist.DeserializedManifestList) ([]*image.Image, []manifestInfo, []string, error) {
 	var (
 		imageList = []*image.Image{}
-		digests   = []digest.Digest{}
+		mfInfos   = []manifestInfo{}
 		mediaType = []string{}
 	)
 	manifestListDigest, err := schema2ManifestDigest(ref, mfstList)
@@ -476,17 +485,17 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 
 		switch v := manifest.(type) {
 		case *schema1.SignedManifest:
-			img, imgDigest, err := mf.pullSchema1(ctx, manifestRef, v)
+			img, mfInfo, err := mf.pullSchema1(ctx, manifestRef, v)
 			imageList = append(imageList, img)
-			digests = append(digests, imgDigest)
+			mfInfos = append(mfInfos, mfInfo)
 			mediaType = append(mediaType, schema1.MediaTypeManifest)
 			if err != nil {
 				return nil, nil, nil, err
 			}
 		case *schema2.DeserializedManifest:
-			img, imgDigest, err := mf.pullSchema2(ctx, manifestRef, v)
+			img, mfInfo, err := mf.pullSchema2(ctx, manifestRef, v)
 			imageList = append(imageList, img)
-			digests = append(digests, imgDigest)
+			mfInfos = append(mfInfos, mfInfo)
 			mediaType = append(mediaType, schema2.MediaTypeManifest)
 			if err != nil {
 				return nil, nil, nil, err
@@ -496,5 +505,5 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 		}
 	}
 
-	return imageList, digests, mediaType, err
+	return imageList, mfInfos, mediaType, err
 }

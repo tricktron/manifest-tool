@@ -150,8 +150,7 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 		return nil, fmt.Errorf("No such image %s:%s", mf.repoInfo.FullName(), tag)
 	}
 
-	size := pulledImg.Size
-	imageInsp := makeImageInspect(pulledImg, tag, "", schema1.MediaTypeManifest, tagList, size)
+	imageInsp := makeImageInspect(pulledImg, tag, manifestInfo{}, schema1.MediaTypeManifest, tagList)
 	imageList = append(imageList, *imageInsp)
 	return imageList, nil
 }

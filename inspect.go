@@ -40,6 +40,10 @@ var inspectCmd = cli.Command{
 			fmt.Printf("      Digest: %s\n", imgInspect[0].Digest)
 			fmt.Printf("Architecture: %s\n", imgInspect[0].Architecture)
 			fmt.Printf("          OS: %s\n", imgInspect[0].Os)
+			fmt.Printf("    # Layers: %d\n", len(imgInspect[0].Layers))
+			for i, digest := range imgInspect[0].Layers {
+				fmt.Printf("      layer %d: digest = %s\n", i+1, digest)
+			}
 			return
 		}
 		// more than one response--this is a manifest list
@@ -50,6 +54,11 @@ var inspectCmd = cli.Command{
 			fmt.Printf("%d  Mfst Length: %d\n", i+1, img.Size)
 			fmt.Printf("%d Architecture: %s\n", i+1, img.Architecture)
 			fmt.Printf("%d           OS: %s\n", i+1, img.Os)
+			fmt.Printf("%d     # Layers: %d\n", i+1, len(img.Layers))
+			for j, digest := range img.Layers {
+				fmt.Printf("         layer %d: digest = %s\n", j+1, digest)
+			}
+			fmt.Println()
 		}
 	},
 }

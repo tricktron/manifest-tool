@@ -12,7 +12,6 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/docker/distribution/digest"
 	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
@@ -323,13 +322,17 @@ func validateRepoName(name string) error {
 	return nil
 }
 
-func makeImageInspect(img *image.Image, tag string, dgst digest.Digest, mediaType string, tagList []string, size int64) *types.ImageInspect {
+func makeImageInspect(img *image.Image, tag string, mfInfo manifestInfo, mediaType string, tagList []string) *types.ImageInspect {
 	var digest string
-	if err := dgst.Validate(); err == nil {
-		digest = dgst.String()
+	if err := mfInfo.digest.Validate(); err == nil {
+		digest = mfInfo.digest.String()
+	}
+	var digests []string
+	for _, blobDigest := range mfInfo.blobDigests {
+		digests = append(digests, blobDigest.String())
 	}
 	return &types.ImageInspect{
-		Size:            size,
+		Size:            mfInfo.length,
 		MediaType:       mediaType,
 		Tag:             tag,
 		Digest:          digest,
@@ -342,6 +345,7 @@ func makeImageInspect(img *image.Image, tag string, dgst digest.Digest, mediaTyp
 		Config:          img.Config,
 		Architecture:    img.Architecture,
 		Os:              img.OS,
+		Layers:          digests,
 	}
 }
 

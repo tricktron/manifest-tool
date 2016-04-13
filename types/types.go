@@ -18,4 +18,5 @@ type ImageInspect struct {
 	Config          *containerTypes.Config
 	Architecture    string
 	Os              string
+	Layers          []string
 }
