@@ -62,6 +62,10 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
+		// validate os/arch input
+		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
+			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
+		}
 		imgsInsp, err := GetData(c, img.Image)
 		if len(imgsInsp) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
