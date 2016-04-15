@@ -27,17 +27,17 @@ implemented, the images must be in the same repo and only the tag can differ.
 Using a private registry running on port 5000, a sample YAML might look like:
 ```
 image: myprivreg:5000/someimage:latest
-manifests: 
-  - 
+manifests:
+  -
     image: myprivreg:5000/someimage:ppc64le
-    platform: 
+    platform:
       architecture: ppc64le
       os: linux
-  - 
+  -
     image: myprivreg:5000/someimage:amd64
-    platform: 
+    platform:
       architecture: amd64
-      features: 
+      features:
         - sse
       os: linux
 ```
