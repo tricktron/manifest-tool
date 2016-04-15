@@ -57,9 +57,22 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Can't unmarshal YAML file %q: %v", filePath, err)
 	}
 
-	// Set the schema version
-	manifestList.Versioned = manifestlist.SchemaVersion
+	// process the final image name reference for the manifest list
+	targetRef, err := reference.ParseNamed(yamlInput.Image)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+	}
+	targetRepo, err := registry.ParseRepositoryInfo(targetRef)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
+	}
+	targetEndpoint, repoName, err := setupRepo(targetRepo)
+	if err != nil {
+		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
+	}
 
+	// Now create the manifest list payload by looking up the manifest schemas
+	// for the constituent images:
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
 		// validate os/arch input
@@ -91,52 +104,14 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
-	// process the final image name reference for the manifest list
-	ref, err := reference.ParseNamed(yamlInput.Image)
+	// Set the schema version
+	manifestList.Versioned = manifestlist.SchemaVersion
+
+	pushURL, err := createURLFromTargetRef(targetRef, targetEndpoint)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
-	if err != nil {
-		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
-	}
-
-	options := &registry.Options{}
-	options.Mirrors = opts.NewListOpts(nil)
-	options.InsecureRegistries = opts.NewListOpts(nil)
-	options.InsecureRegistries.Set("0.0.0.0/0")
-	registryService := registry.NewService(options)
-	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
-	for _, ic := range registryService.Config.IndexConfigs {
-		ic.Secure = false
-	}
-
-	endpoints, _ := registryService.LookupPushEndpoints(repoInfo.Hostname())
-	logrus.Debugf("endpoints: %v", endpoints)
-	endpoint := endpoints[0]
-
-	repoName := repoInfo.FullName()
-	// If endpoint does not support CanonicalName, use the RemoteName instead
-	if endpoint.TrimHostname {
-		repoName = repoInfo.RemoteName()
-		logrus.Debugf("repoName: %v", repoName)
-	}
-	// get rid of hostname so URL is constructed properly
-	hostname, name := splitHostname(ref.String())
-	ref, _ = reference.ParseNamed(name)
-	logrus.Debugf("hostname: %q; repoName: %q", hostname, name)
-
-	// Set the tag to latest, if no tag found in YAML
-	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
-		ref, _ = reference.WithTag(ref, reference.DefaultTag)
-
-	}
-	tagged, _ := ref.(reference.NamedTagged)
-	ref, _ = reference.WithTag(ref, tagged.Tag())
-
-	urlBuilder, _ := v2.NewURLBuilderFromString(endpoint.URL.String())
-	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
-	logrus.Debugf("Manifest url: %s", manifestURL)
+	logrus.Debugf("Manifest list push url: %s", pushURL)
 
 	deserializedManifestList, err := manifestlist.FromDescriptors(manifestList.Manifests)
 	if err != nil {
@@ -148,49 +123,15 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Cannot retrieve payload for HTTP PUT of manifest list: %v", err)
 
 	}
-	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
+	putRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(p))
 	if err != nil {
 		return "", fmt.Errorf("HTTP PUT request creation failed: %v", err)
 	}
 	putRequest.Header.Set("Content-Type", mediaType)
 
-	// get the http transport, this will be used in a client to upload manifest
-	// TODO - add separate function get client
-	base := &http.Transport{
-		Proxy: http.ProxyFromEnvironment,
-		Dial: (&net.Dialer{
-			Timeout:   30 * time.Second,
-			KeepAlive: 30 * time.Second,
-			DualStack: true,
-		}).Dial,
-		TLSHandshakeTimeout: 10 * time.Second,
-		TLSClientConfig:     endpoint.TLSConfig,
-		DisableKeepAlives:   true,
-	}
-	authConfig, err := getAuthConfig(c, repoInfo.Index)
+	httpClient, err := getHTTPClient(c, targetRepo, targetEndpoint, repoName)
 	if err != nil {
-		return "", fmt.Errorf("Cannot retrieve authconfig: %v", err)
-	}
-	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
-	authTransport := transport.NewTransport(base, modifiers...)
-	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
-	if err != nil {
-		return "", fmt.Errorf("Ping of V2 registry failed: %v", err)
-	}
-	if authConfig.RegistryToken != "" {
-		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
-		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, passThruTokenHandler))
-	} else {
-		creds := dumbCredentialStore{auth: &authConfig}
-		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "*")
-		basicHandler := auth.NewBasicHandler(creds)
-		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
-	}
-	tr := transport.NewTransport(base, modifiers...)
-
-	httpClient := &http.Client{
-		Transport:     tr,
-		CheckRedirect: checkHTTPRedirect,
+		return "", fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
 	}
 
 	resp, err := httpClient.Do(putRequest)
@@ -209,7 +150,111 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return string(dgst), nil
 	}
 	return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
+}
 
+func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
+	// get the http transport, this will be used in a client to upload manifest
+	// TODO - add separate function get client
+	base := &http.Transport{
+		Proxy: http.ProxyFromEnvironment,
+		Dial: (&net.Dialer{
+			Timeout:   30 * time.Second,
+			KeepAlive: 30 * time.Second,
+			DualStack: true,
+		}).Dial,
+		TLSHandshakeTimeout: 10 * time.Second,
+		TLSClientConfig:     endpoint.TLSConfig,
+		DisableKeepAlives:   true,
+	}
+	authConfig, err := getAuthConfig(c, repoInfo.Index)
+	if err != nil {
+		return nil, fmt.Errorf("Cannot retrieve authconfig: %v", err)
+	}
+	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
+	authTransport := transport.NewTransport(base, modifiers...)
+	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
+	if err != nil {
+		return nil, fmt.Errorf("Ping of V2 registry failed: %v", err)
+	}
+	if authConfig.RegistryToken != "" {
+		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
+		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, passThruTokenHandler))
+	} else {
+		creds := dumbCredentialStore{auth: &authConfig}
+		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "*")
+		basicHandler := auth.NewBasicHandler(creds)
+		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
+	}
+	tr := transport.NewTransport(base, modifiers...)
+
+	httpClient := &http.Client{
+		Transport:     tr,
+		CheckRedirect: checkHTTPRedirect,
+	}
+	return httpClient, nil
+}
+
+func createURLFromTargetRef(targetRef reference.Named, endpoint registry.APIEndpoint) (string, error) {
+	// get rid of hostname so the target URL is constructed properly
+	hostname, name := splitHostname(targetRef.String())
+	logrus.Debugf("hostname: %q; repoName: %q", hostname, name)
+	targetRef, err := reference.ParseNamed(name)
+	if err != nil {
+		return "", fmt.Errorf("Can't parse target image repository name from reference: %v", err)
+	}
+
+	// Set the tag to latest, if no tag found in YAML
+	if _, isTagged := targetRef.(reference.NamedTagged); !isTagged {
+		targetRef, err = reference.WithTag(targetRef, reference.DefaultTag)
+		if err != nil {
+			return "", fmt.Errorf("Error adding default tag to target repository name: %v", err)
+		}
+	} else {
+		tagged, _ := targetRef.(reference.NamedTagged)
+		targetRef, err = reference.WithTag(targetRef, tagged.Tag())
+		if err != nil {
+			return "", fmt.Errorf("Error referencing specified tag to target repository name: %v", err)
+		}
+	}
+
+	urlBuilder, err := v2.NewURLBuilderFromString(endpoint.URL.String())
+	if err != nil {
+		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", endpoint.URL.String(), err)
+	}
+	manifestURL, err := urlBuilder.BuildManifestURL(targetRef)
+	if err != nil {
+		return "", fmt.Errorf("Failed to build manifest URL from target reference: %v", err)
+	}
+	return manifestURL, nil
+}
+
+func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string, error) {
+
+	options := &registry.Options{}
+	options.Mirrors = opts.NewListOpts(nil)
+	options.InsecureRegistries = opts.NewListOpts(nil)
+	options.InsecureRegistries.Set("0.0.0.0/0")
+	registryService := registry.NewService(options)
+	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
+	for _, ic := range registryService.Config.IndexConfigs {
+		ic.Secure = false
+	}
+
+	endpoints, err := registryService.LookupPushEndpoints(repoInfo.Hostname())
+	if err != nil {
+		return registry.APIEndpoint{}, "", err
+	}
+	logrus.Debugf("endpoints: %v", endpoints)
+	// take highest priority endpoint
+	endpoint := endpoints[0]
+
+	repoName := repoInfo.FullName()
+	// If endpoint does not support CanonicalName, use the RemoteName instead
+	if endpoint.TrimHostname {
+		repoName = repoInfo.RemoteName()
+		logrus.Debugf("repoName: %v", repoName)
+	}
+	return endpoint, repoName, nil
 }
 
 func statusSuccess(status int) bool {
