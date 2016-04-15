@@ -21,8 +21,10 @@ from the manifest tool:
 ```
 
 In the current version, a YAML file defines the images which will be combined into a manifest list
-object. A sample YAML file is shown below.  Note that until `manifest` has cross-repository push
-implemented, the images must be in the same repo and only the tag can differ.
+object. A sample YAML file is shown below.  Cross-repository push is implemented in `manifest`
+so the image names can differ as long as they are in the same registry. For example, a source
+image can be `myprivreg:5000/someimage_ppc64le:latest` to create a manifest list with image name
+`myprivreg:5000/someimage:latest`.
 
 Using a private registry running on port 5000, a sample YAML might look like:
 ```
@@ -77,8 +79,7 @@ $ make test-integration
 
 ### TODO
 
- 1. Cross-repository push support
- 2. Automatically populate OS and architecture from source manifests?
+ 1. Automatically populate OS and architecture from source manifests?
 
 ### License
 
