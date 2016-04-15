@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"time"
 
@@ -38,10 +39,16 @@ type ManifestEntry struct {
 	Platform manifestlist.PlatformSpec
 }
 
+type blobMount struct {
+	FromRepo string
+	Digest   string
+}
+
 func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	var (
-		yamlInput    YAMLInput
-		manifestList manifestlist.ManifestList
+		yamlInput         YAMLInput
+		manifestList      manifestlist.ManifestList
+		blobMountRequests []blobMount
 	)
 
 	filename, err := filepath.Abs(filePath)
@@ -84,7 +91,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 		if repoInfo.Hostname() != targetRepo.Hostname() {
-			return "", fmt.Errorf("Cannot use source images for a manifest list from a different registry than the target: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
+			return "", fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
@@ -104,13 +111,27 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
 		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgMfst.Digest, imgMfst.Size)
+
+		// if this image is in a different repo, we need to add the layer/blob digests to the list of
+		// requested blob mounts (cross-repository push) before pushing the manifest list
+		if repoName != repoInfo.RemoteName() {
+			logrus.Debugf("Adding layers of %q to blob mount requests", img.Image)
+			for _, layer := range imgMfst.Layers {
+				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: repoInfo.RemoteName(), Digest: layer})
+			}
+		}
+
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
 	// Set the schema version
 	manifestList.Versioned = manifestlist.SchemaVersion
 
-	pushURL, err := createURLFromTargetRef(targetRef, targetEndpoint)
+	urlBuilder, err := v2.NewURLBuilderFromString(targetEndpoint.URL.String())
+	if err != nil {
+		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
+	}
+	pushURL, err := createURLFromTargetRef(targetRef, urlBuilder)
 	if err != nil {
 		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
@@ -137,11 +158,17 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
 	}
 
+	// before we push the manifest list, if we have any blob mount requests, we need
+	// to ask the registry to mount those blobs in our target so they are available
+	// as references
+	if err := mountBlobs(httpClient, urlBuilder, targetRef, blobMountRequests); err != nil {
+		return "", fmt.Errorf("Couldn't mount blobs for cross-repository push: %v", err)
+	}
+
 	resp, err := httpClient.Do(putRequest)
 	if err != nil {
 		return "", fmt.Errorf("V2 registry PUT of manifest list failed: %v", err)
 	}
-
 	defer resp.Body.Close()
 
 	if statusSuccess(resp.StatusCode) {
@@ -197,10 +224,9 @@ func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint r
 	return httpClient, nil
 }
 
-func createURLFromTargetRef(targetRef reference.Named, endpoint registry.APIEndpoint) (string, error) {
+func createURLFromTargetRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
 	// get rid of hostname so the target URL is constructed properly
-	hostname, name := splitHostname(targetRef.String())
-	logrus.Debugf("hostname: %q; repoName: %q", hostname, name)
+	_, name := splitHostname(targetRef.String())
 	targetRef, err := reference.ParseNamed(name)
 	if err != nil {
 		return "", fmt.Errorf("Can't parse target image repository name from reference: %v", err)
@@ -220,10 +246,6 @@ func createURLFromTargetRef(targetRef reference.Named, endpoint registry.APIEndp
 		}
 	}
 
-	urlBuilder, err := v2.NewURLBuilderFromString(endpoint.URL.String())
-	if err != nil {
-		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", endpoint.URL.String(), err)
-	}
 	manifestURL, err := urlBuilder.BuildManifestURL(targetRef)
 	if err != nil {
 		return "", fmt.Errorf("Failed to build manifest URL from target reference: %v", err)
@@ -258,6 +280,36 @@ func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string,
 		logrus.Debugf("repoName: %v", repoName)
 	}
 	return endpoint, repoName, nil
+}
+
+func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, blobsRequested []blobMount) error {
+	// get rid of hostname so the target URL is constructed properly
+	_, name := splitHostname(ref.String())
+	targetRef, _ := reference.ParseNamed(name)
+
+	for _, blob := range blobsRequested {
+		// create URL request
+		url, err := urlBuilder.BuildBlobUploadURL(targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
+		if err != nil {
+			return fmt.Errorf("Failed to create blob mount URL: %v", err)
+		}
+		mountRequest, err := http.NewRequest("POST", url, nil)
+		if err != nil {
+			return fmt.Errorf("HTTP POST request creation for blob mount failed: %v", err)
+		}
+		mountRequest.Header.Set("Content-Length", "0")
+		resp, err := httpClient.Do(mountRequest)
+		if err != nil {
+			return fmt.Errorf("V2 registry POST of blob mount failed: %v", err)
+		}
+
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			return fmt.Errorf("Blob mount failed to url %s: HTTP status %d", url, resp.StatusCode)
+		}
+		logrus.Debugf("Mount of blob %s succeeded, location: %q", blob.Digest, resp.Header.Get("Location"))
+	}
+	return nil
 }
 
 func statusSuccess(status int) bool {
