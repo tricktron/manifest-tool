@@ -79,9 +79,12 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
 			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
 		}
-		mfstData, err := GetData(c, img.Image)
+		mfstData, repoInfo, err := GetImageData(c, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
+		}
+		if repoInfo.Hostname() != targetRepo.Hostname() {
+			return "", fmt.Errorf("Cannot use source images for a manifest list from a different registry than the target: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup

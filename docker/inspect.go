@@ -145,24 +145,24 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func GetData(c *cli.Context, name string) ([]types.ImageInspect, error) {
+func GetImageData(c *cli.Context, name string) ([]types.ImageInspect, *registry.RepositoryInfo, error) {
 	if err := validateName(name); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	ref, err := reference.ParseNamed(name)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	repoInfo, err := registry.ParseRepositoryInfo(ref)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	authConfig, err := getAuthConfig(c, repoInfo.Index)
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	if err := validateRepoName(repoInfo.Name()); err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	options := &registry.Options{}
 	options.Mirrors = opts.NewListOpts(nil)
@@ -176,7 +176,7 @@ func GetData(c *cli.Context, name string) ([]types.ImageInspect, error) {
 
 	endpoints, err := registryService.LookupPullEndpoints(repoInfo.Hostname())
 	if err != nil {
-		return nil, err
+		return nil, nil, err
 	}
 	logrus.Debugf("endpoints: %v", endpoints)
 
@@ -194,11 +194,11 @@ func GetData(c *cli.Context, name string) ([]types.ImageInspect, error) {
 
 		v1endpoint, err := endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(), nil)
 		if err != nil {
-			return nil, err
+			return nil, nil, err
 		}
 		if _, err := v1endpoint.Ping(); err != nil {
 			if strings.Contains(err.Error(), "timeout") {
-				return nil, err
+				return nil, nil, err
 			}
 			continue
 		}
@@ -252,17 +252,17 @@ func GetData(c *cli.Context, name string) ([]types.ImageInspect, error) {
 				continue
 			}
 			logrus.Errorf("Not continuing with pull after error: %v", err)
-			return nil, err
+			return nil, nil, err
 		}
 
-		return foundImages, nil
+		return foundImages, repoInfo, nil
 	}
 
 	if lastErr == nil {
 		lastErr = fmt.Errorf("no endpoints found for %s", ref.String())
 	}
 
-	return nil, lastErr
+	return nil, nil, lastErr
 }
 
 func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, authConfig engineTypes.AuthConfig, registryService *registry.Service) (manifestFetcher, error) {
