@@ -307,7 +307,7 @@ func getAuthConfig(c *cli.Context, index *registryTypes.IndexInfo) (engineTypes.
 		return engineTypes.AuthConfig{}, err
 	}
 	authConfig := registry.ResolveAuthConfig(confFile.AuthConfigs, index)
-	logrus.Debugf("authConfig for %s: %v", index.Name, authConfig)
+	logrus.Debugf("authConfig for %s: %v", index.Name, authConfig.Username)
 
 	return authConfig, nil
 }
