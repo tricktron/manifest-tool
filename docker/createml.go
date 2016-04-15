@@ -6,6 +6,7 @@ import (
 	"io/ioutil"
 	"net"
 	"net/http"
+	"net/url"
 	"path/filepath"
 	"time"
 
@@ -38,10 +39,16 @@ type ManifestEntry struct {
 	Platform manifestlist.PlatformSpec
 }
 
+type blobMount struct {
+	FromRepo string
+	Digest   string
+}
+
 func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	var (
-		yamlInput    YAMLInput
-		manifestList manifestlist.ManifestList
+		yamlInput         YAMLInput
+		manifestList      manifestlist.ManifestList
+		blobMountRequests []blobMount
 	)
 
 	filename, err := filepath.Abs(filePath)
@@ -57,18 +64,34 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Can't unmarshal YAML file %q: %v", filePath, err)
 	}
 
-	// Set the schema version
-	manifestList.Versioned = manifestlist.SchemaVersion
+	// process the final image name reference for the manifest list
+	targetRef, err := reference.ParseNamed(yamlInput.Image)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+	}
+	targetRepo, err := registry.ParseRepositoryInfo(targetRef)
+	if err != nil {
+		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
+	}
+	targetEndpoint, repoName, err := setupRepo(targetRepo)
+	if err != nil {
+		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
+	}
 
+	// Now create the manifest list payload by looking up the manifest schemas
+	// for the constituent images:
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
 		// validate os/arch input
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
 			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
 		}
-		mfstData, err := GetData(c, img.Image)
+		mfstData, repoInfo, err := GetImageData(c, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
+		}
+		if repoInfo.Hostname() != targetRepo.Hostname() {
+			return "", fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
@@ -88,55 +111,31 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
 		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgMfst.Digest, imgMfst.Size)
+
+		// if this image is in a different repo, we need to add the layer/blob digests to the list of
+		// requested blob mounts (cross-repository push) before pushing the manifest list
+		if repoName != repoInfo.RemoteName() {
+			logrus.Debugf("Adding layers of %q to blob mount requests", img.Image)
+			for _, layer := range imgMfst.Layers {
+				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: repoInfo.RemoteName(), Digest: layer})
+			}
+		}
+
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
-	// process the final image name reference for the manifest list
-	ref, err := reference.ParseNamed(yamlInput.Image)
+	// Set the schema version
+	manifestList.Versioned = manifestlist.SchemaVersion
+
+	urlBuilder, err := v2.NewURLBuilderFromString(targetEndpoint.URL.String())
 	if err != nil {
-		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
 	}
-	repoInfo, err := registry.ParseRepositoryInfo(ref)
+	pushURL, err := createURLFromTargetRef(targetRef, urlBuilder)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
+		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
-
-	options := &registry.Options{}
-	options.Mirrors = opts.NewListOpts(nil)
-	options.InsecureRegistries = opts.NewListOpts(nil)
-	options.InsecureRegistries.Set("0.0.0.0/0")
-	registryService := registry.NewService(options)
-	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
-	for _, ic := range registryService.Config.IndexConfigs {
-		ic.Secure = false
-	}
-
-	endpoints, _ := registryService.LookupPushEndpoints(repoInfo.Hostname())
-	logrus.Debugf("endpoints: %v", endpoints)
-	endpoint := endpoints[0]
-
-	repoName := repoInfo.FullName()
-	// If endpoint does not support CanonicalName, use the RemoteName instead
-	if endpoint.TrimHostname {
-		repoName = repoInfo.RemoteName()
-		logrus.Debugf("repoName: %v", repoName)
-	}
-	// get rid of hostname so URL is constructed properly
-	hostname, name := splitHostname(ref.String())
-	ref, _ = reference.ParseNamed(name)
-	logrus.Debugf("hostname: %q; repoName: %q", hostname, name)
-
-	// Set the tag to latest, if no tag found in YAML
-	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
-		ref, _ = reference.WithTag(ref, reference.DefaultTag)
-
-	}
-	tagged, _ := ref.(reference.NamedTagged)
-	ref, _ = reference.WithTag(ref, tagged.Tag())
-
-	urlBuilder, _ := v2.NewURLBuilderFromString(endpoint.URL.String())
-	manifestURL, _ := urlBuilder.BuildManifestURL(ref)
-	logrus.Debugf("Manifest url: %s", manifestURL)
+	logrus.Debugf("Manifest list push url: %s", pushURL)
 
 	deserializedManifestList, err := manifestlist.FromDescriptors(manifestList.Manifests)
 	if err != nil {
@@ -148,12 +147,42 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		return "", fmt.Errorf("Cannot retrieve payload for HTTP PUT of manifest list: %v", err)
 
 	}
-	putRequest, err := http.NewRequest("PUT", manifestURL, bytes.NewReader(p))
+	putRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(p))
 	if err != nil {
 		return "", fmt.Errorf("HTTP PUT request creation failed: %v", err)
 	}
 	putRequest.Header.Set("Content-Type", mediaType)
 
+	httpClient, err := getHTTPClient(c, targetRepo, targetEndpoint, repoName)
+	if err != nil {
+		return "", fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
+	}
+
+	// before we push the manifest list, if we have any blob mount requests, we need
+	// to ask the registry to mount those blobs in our target so they are available
+	// as references
+	if err := mountBlobs(httpClient, urlBuilder, targetRef, blobMountRequests); err != nil {
+		return "", fmt.Errorf("Couldn't mount blobs for cross-repository push: %v", err)
+	}
+
+	resp, err := httpClient.Do(putRequest)
+	if err != nil {
+		return "", fmt.Errorf("V2 registry PUT of manifest list failed: %v", err)
+	}
+	defer resp.Body.Close()
+
+	if statusSuccess(resp.StatusCode) {
+		dgstHeader := resp.Header.Get("Docker-Content-Digest")
+		dgst, err := digest.ParseDigest(dgstHeader)
+		if err != nil {
+			return "", err
+		}
+		return string(dgst), nil
+	}
+	return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
+}
+
+func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
 	// get the http transport, this will be used in a client to upload manifest
 	// TODO - add separate function get client
 	base := &http.Transport{
@@ -169,13 +198,13 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	}
 	authConfig, err := getAuthConfig(c, repoInfo.Index)
 	if err != nil {
-		return "", fmt.Errorf("Cannot retrieve authconfig: %v", err)
+		return nil, fmt.Errorf("Cannot retrieve authconfig: %v", err)
 	}
 	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
 	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
 	if err != nil {
-		return "", fmt.Errorf("Ping of V2 registry failed: %v", err)
+		return nil, fmt.Errorf("Ping of V2 registry failed: %v", err)
 	}
 	if authConfig.RegistryToken != "" {
 		passThruTokenHandler := &existingTokenHandler{token: authConfig.RegistryToken}
@@ -192,24 +221,95 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		Transport:     tr,
 		CheckRedirect: checkHTTPRedirect,
 	}
+	return httpClient, nil
+}
 
-	resp, err := httpClient.Do(putRequest)
+func createURLFromTargetRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
+	// get rid of hostname so the target URL is constructed properly
+	_, name := splitHostname(targetRef.String())
+	targetRef, err := reference.ParseNamed(name)
 	if err != nil {
-		return "", fmt.Errorf("V2 registry PUT of manifest list failed: %v", err)
+		return "", fmt.Errorf("Can't parse target image repository name from reference: %v", err)
 	}
 
-	defer resp.Body.Close()
-
-	if statusSuccess(resp.StatusCode) {
-		dgstHeader := resp.Header.Get("Docker-Content-Digest")
-		dgst, err := digest.ParseDigest(dgstHeader)
+	// Set the tag to latest, if no tag found in YAML
+	if _, isTagged := targetRef.(reference.NamedTagged); !isTagged {
+		targetRef, err = reference.WithTag(targetRef, reference.DefaultTag)
 		if err != nil {
-			return "", err
+			return "", fmt.Errorf("Error adding default tag to target repository name: %v", err)
 		}
-		return string(dgst), nil
+	} else {
+		tagged, _ := targetRef.(reference.NamedTagged)
+		targetRef, err = reference.WithTag(targetRef, tagged.Tag())
+		if err != nil {
+			return "", fmt.Errorf("Error referencing specified tag to target repository name: %v", err)
+		}
 	}
-	return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
 
+	manifestURL, err := urlBuilder.BuildManifestURL(targetRef)
+	if err != nil {
+		return "", fmt.Errorf("Failed to build manifest URL from target reference: %v", err)
+	}
+	return manifestURL, nil
+}
+
+func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string, error) {
+
+	options := &registry.Options{}
+	options.Mirrors = opts.NewListOpts(nil)
+	options.InsecureRegistries = opts.NewListOpts(nil)
+	options.InsecureRegistries.Set("0.0.0.0/0")
+	registryService := registry.NewService(options)
+	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
+	for _, ic := range registryService.Config.IndexConfigs {
+		ic.Secure = false
+	}
+
+	endpoints, err := registryService.LookupPushEndpoints(repoInfo.Hostname())
+	if err != nil {
+		return registry.APIEndpoint{}, "", err
+	}
+	logrus.Debugf("endpoints: %v", endpoints)
+	// take highest priority endpoint
+	endpoint := endpoints[0]
+
+	repoName := repoInfo.FullName()
+	// If endpoint does not support CanonicalName, use the RemoteName instead
+	if endpoint.TrimHostname {
+		repoName = repoInfo.RemoteName()
+		logrus.Debugf("repoName: %v", repoName)
+	}
+	return endpoint, repoName, nil
+}
+
+func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, blobsRequested []blobMount) error {
+	// get rid of hostname so the target URL is constructed properly
+	_, name := splitHostname(ref.String())
+	targetRef, _ := reference.ParseNamed(name)
+
+	for _, blob := range blobsRequested {
+		// create URL request
+		url, err := urlBuilder.BuildBlobUploadURL(targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
+		if err != nil {
+			return fmt.Errorf("Failed to create blob mount URL: %v", err)
+		}
+		mountRequest, err := http.NewRequest("POST", url, nil)
+		if err != nil {
+			return fmt.Errorf("HTTP POST request creation for blob mount failed: %v", err)
+		}
+		mountRequest.Header.Set("Content-Length", "0")
+		resp, err := httpClient.Do(mountRequest)
+		if err != nil {
+			return fmt.Errorf("V2 registry POST of blob mount failed: %v", err)
+		}
+
+		resp.Body.Close()
+		if resp.StatusCode != http.StatusCreated {
+			return fmt.Errorf("Blob mount failed to url %s: HTTP status %d", url, resp.StatusCode)
+		}
+		logrus.Debugf("Mount of blob %s succeeded, location: %q", blob.Digest, resp.Header.Get("Location"))
+	}
+	return nil
 }
 
 func statusSuccess(status int) bool {
