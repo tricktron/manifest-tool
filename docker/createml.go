@@ -66,27 +66,28 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
 			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
 		}
-		imgsInsp, err := GetData(c, img.Image)
-		if len(imgsInsp) > 1 {
-			// too many responses--can only happen if a manifest list was returned for the name lookup
-			return "", fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion.")
-		}
-		imgInsp := imgsInsp[0]
+		mfstData, err := GetData(c, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
+		if len(mfstData) > 1 {
+			// too many responses--can only happen if a manifest list was returned for the name lookup
+			return "", fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion.")
+		}
+		// the non-manifest list case will always have exactly one manifest response
+		imgMfst := mfstData[0]
 
 		manifest := manifestlist.ManifestDescriptor{
 			Platform: img.Platform,
 		}
-		manifest.Descriptor.Digest, err = digest.ParseDigest(imgInsp.Digest)
-		manifest.Size = imgInsp.Size
-		manifest.MediaType = imgInsp.MediaType
+		manifest.Descriptor.Digest, err = digest.ParseDigest(imgMfst.Digest)
+		manifest.Size = imgMfst.Size
+		manifest.MediaType = imgMfst.MediaType
 
 		if err != nil {
 			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
-		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgInsp.Digest, imgInsp.Size)
+		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgMfst.Digest, imgMfst.Size)
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
