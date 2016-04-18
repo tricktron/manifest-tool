@@ -1,6 +1,7 @@
 package types
 
 import (
+	"github.com/docker/distribution/manifest/manifestlist"
 	containerTypes "github.com/docker/engine-api/types/container"
 )
 
@@ -19,4 +20,5 @@ type ImageInspect struct {
 	Architecture    string
 	Os              string
 	Layers          []string
+	Platform        manifestlist.PlatformSpec
 }

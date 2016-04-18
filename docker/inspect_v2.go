@@ -36,6 +36,7 @@ type v2ManifestFetcher struct {
 type manifestInfo struct {
 	blobDigests []digest.Digest
 	digest      digest.Digest
+	platform    manifestlist.PlatformSpec
 	length      int64
 }
 
@@ -473,6 +474,7 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 		}
 
 		thisDigest := manifestDescriptor.Digest
+		thisPlatform := manifestDescriptor.Platform
 		manifest, err := manSvc.Get(ctx, thisDigest)
 		if err != nil {
 			return nil, nil, nil, err
@@ -487,6 +489,7 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 		case *schema1.SignedManifest:
 			img, mfInfo, err := mf.pullSchema1(ctx, manifestRef, v)
 			imageList = append(imageList, img)
+			mfInfo.platform = thisPlatform
 			mfInfos = append(mfInfos, mfInfo)
 			mediaType = append(mediaType, schema1.MediaTypeManifest)
 			if err != nil {
@@ -495,6 +498,7 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 		case *schema2.DeserializedManifest:
 			img, mfInfo, err := mf.pullSchema2(ctx, manifestRef, v)
 			imageList = append(imageList, img)
+			mfInfo.platform = thisPlatform
 			mfInfos = append(mfInfos, mfInfo)
 			mediaType = append(mediaType, schema2.MediaTypeManifest)
 			if err != nil {
