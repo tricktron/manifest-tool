@@ -20,7 +20,6 @@ import (
 	"github.com/go-yaml/yaml"
 
 	"github.com/docker/docker/dockerversion"
-	"github.com/docker/docker/opts"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 )
@@ -200,7 +199,7 @@ func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint r
 	if err != nil {
 		return nil, fmt.Errorf("Cannot retrieve authconfig: %v", err)
 	}
-	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(), http.Header{})
+	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(nil), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
 	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
 	if err != nil {
@@ -255,15 +254,9 @@ func createURLFromTargetRef(targetRef reference.Named, urlBuilder *v2.URLBuilder
 
 func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string, error) {
 
-	options := &registry.Options{}
-	options.Mirrors = opts.NewListOpts(nil)
-	options.InsecureRegistries = opts.NewListOpts(nil)
-	options.InsecureRegistries.Set("0.0.0.0/0")
+	options := registry.ServiceOptions{}
+	options.InsecureRegistries = append(options.InsecureRegistries, "0.0.0.0/0")
 	registryService := registry.NewService(options)
-	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
-	for _, ic := range registryService.Config.IndexConfigs {
-		ic.Secure = false
-	}
 
 	endpoints, err := registryService.LookupPushEndpoints(repoInfo.Hostname())
 	if err != nil {
