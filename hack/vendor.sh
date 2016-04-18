@@ -14,9 +14,9 @@ clone git golang.org/x/net master https://github.com/golang/net.git
 clone git github.com/go-check/check v1
 clone git github.com/go-yaml/yaml v2
 
-clone git github.com/docker/docker 29bade2cd0a09191279f04ebc6aeedaa70c772a0
-clone git github.com/docker/engine-api 7f6071353fc48f69d2328c4ebe8f3bd0f7c75da4
-clone git github.com/docker/distribution 7b66c50bb7e0e4b3b83f8fd134a9f6ea4be08b57
+clone git github.com/docker/docker v1.11.0
+clone git github.com/docker/engine-api v0.3.3
+clone git github.com/docker/distribution d06d6d3b093302c02a93153ac7b06ebc0ffd1793
 
 clone git github.com/docker/go-connections master
 clone git github.com/docker/go-units master
