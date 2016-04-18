@@ -22,7 +22,6 @@ import (
 	"github.com/docker/docker/distribution"
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
-	"github.com/docker/docker/opts"
 	versionPkg "github.com/docker/docker/pkg/version"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
@@ -60,6 +59,13 @@ func (th *existingTokenHandler) Scheme() string {
 func (th *existingTokenHandler) AuthorizeRequest(req *http.Request, params map[string]string) error {
 	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", th.token))
 	return nil
+}
+
+func (dcs dumbCredentialStore) RefreshToken(*url.URL, string) string {
+	return dcs.auth.IdentityToken
+}
+
+func (dcs dumbCredentialStore) SetRefreshToken(*url.URL, string, string) {
 }
 
 // fallbackError wraps an error that can possibly allow fallback to a different
@@ -164,15 +170,9 @@ func GetImageData(c *cli.Context, name string) ([]types.ImageInspect, *registry.
 	if err := validateRepoName(repoInfo.Name()); err != nil {
 		return nil, nil, err
 	}
-	options := &registry.Options{}
-	options.Mirrors = opts.NewListOpts(nil)
-	options.InsecureRegistries = opts.NewListOpts(nil)
-	options.InsecureRegistries.Set("0.0.0.0/0")
+	options := registry.ServiceOptions{}
+	options.InsecureRegistries = append(options.InsecureRegistries, "0.0.0.0/0")
 	registryService := registry.NewService(options)
-	// TODO(runcom): hacky, provide a way of passing tls cert (flag?) to be used to lookup
-	for _, ic := range registryService.Config.IndexConfigs {
-		ic.Secure = false
-	}
 
 	endpoints, err := registryService.LookupPullEndpoints(repoInfo.Hostname())
 	if err != nil {
@@ -192,7 +192,7 @@ func GetImageData(c *cli.Context, name string) ([]types.ImageInspect, *registry.
 	for _, endpoint := range endpoints {
 		// make sure I can reach the registry, same as docker pull does
 
-		v1endpoint, err := endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(), nil)
+		v1endpoint, err := endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(nil), nil)
 		if err != nil {
 			return nil, nil, err
 		}
@@ -346,6 +346,7 @@ func makeImageInspect(img *image.Image, tag string, mfInfo manifestInfo, mediaTy
 		Architecture:    img.Architecture,
 		Os:              img.OS,
 		Layers:          digests,
+		Platform:        mfInfo.platform,
 	}
 }
 

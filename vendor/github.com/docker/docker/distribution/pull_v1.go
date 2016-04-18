@@ -49,10 +49,10 @@ func (p *v1Puller) Pull(ctx context.Context, ref reference.Named) error {
 	tr := transport.NewTransport(
 		// TODO(tiborvass): was ReceiveTimeout
 		registry.NewTransport(tlsConfig),
-		registry.DockerHeaders(dockerversion.DockerUserAgent(), p.config.MetaHeaders)...,
+		registry.DockerHeaders(dockerversion.DockerUserAgent(ctx), p.config.MetaHeaders)...,
 	)
 	client := registry.HTTPClient(tr)
-	v1Endpoint, err := p.endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(), p.config.MetaHeaders)
+	v1Endpoint, err := p.endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(ctx), p.config.MetaHeaders)
 	if err != nil {
 		logrus.Debugf("Could not get v1 endpoint: %v", err)
 		return fallbackError{err: err}
@@ -330,7 +330,20 @@ func (ld *v1LayerDescriptor) Download(ctx context.Context, progressOutput progre
 	logrus.Debugf("Downloaded %s to tempfile %s", ld.ID(), ld.tmpFile.Name())
 
 	ld.tmpFile.Seek(0, 0)
-	return ld.tmpFile, ld.layerSize, nil
+
+	// hand off the temporary file to the download manager, so it will only
+	// be closed once
+	tmpFile := ld.tmpFile
+	ld.tmpFile = nil
+
+	return ioutils.NewReadCloserWrapper(tmpFile, func() error {
+		tmpFile.Close()
+		err := os.RemoveAll(tmpFile.Name())
+		if err != nil {
+			logrus.Errorf("Failed to remove temp file: %s", tmpFile.Name())
+		}
+		return err
+	}), ld.layerSize, nil
 }
 
 func (ld *v1LayerDescriptor) Close() {

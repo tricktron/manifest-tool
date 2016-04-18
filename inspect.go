@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
@@ -52,8 +53,13 @@ var inspectCmd = cli.Command{
 			fmt.Printf("%d    Mfst Type: %s\n", i+1, img.MediaType)
 			fmt.Printf("%d       Digest: %s\n", i+1, img.Digest)
 			fmt.Printf("%d  Mfst Length: %d\n", i+1, img.Size)
-			fmt.Printf("%d Architecture: %s\n", i+1, img.Architecture)
-			fmt.Printf("%d           OS: %s\n", i+1, img.Os)
+			fmt.Printf("%d     Platform:\n", i+1)
+			fmt.Printf("%d           -      OS: %s\n", i+1, img.Platform.OS)
+			// WINDOWS SUPPORT - NOT VENDORED YET fmt.Printf("%d           - OS Vers: %s\n", i+1, img.Platform.OSVersion)
+			// WINDOWS SUPPORT - NOT VENDORED YET fmt.Printf("%d           - OS Feat: %s\n", i+1, img.Platform.OSFeatures)
+			fmt.Printf("%d           -    Arch: %s\n", i+1, img.Platform.Architecture)
+			fmt.Printf("%d           - Variant: %s\n", i+1, img.Platform.Variant)
+			fmt.Printf("%d           - Feature: %s\n", i+1, strings.Join(img.Platform.Features, ","))
 			fmt.Printf("%d     # Layers: %d\n", i+1, len(img.Layers))
 			for j, digest := range img.Layers {
 				fmt.Printf("         layer %d: digest = %s\n", j+1, digest)

@@ -47,11 +47,11 @@ func (mf *v1ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) ([]
 	tr := transport.NewTransport(
 		registry.NewTransport(tlsConfig),
 		//registry.DockerHeaders(mf.config.MetaHeaders)...,
-		registry.DockerHeaders(dockerversion.DockerUserAgent(), nil)...,
+		registry.DockerHeaders(dockerversion.DockerUserAgent(nil), nil)...,
 	)
 	client := registry.HTTPClient(tr)
 	//v1Endpoint, err := mf.endpoint.ToV1Endpoint(mf.config.MetaHeaders)
-	v1Endpoint, err := mf.endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(), nil)
+	v1Endpoint, err := mf.endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(nil), nil)
 	if err != nil {
 		logrus.Debugf("Could not get v1 endpoint: %v", err)
 		return nil, fallbackError{err: err}
