@@ -21,4 +21,5 @@ type ImageInspect struct {
 	Os              string
 	Layers          []string
 	Platform        manifestlist.PlatformSpec
+	CanonicalJson   []byte
 }
