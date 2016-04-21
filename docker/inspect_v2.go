@@ -211,7 +211,10 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 	// add the size of the manifest to the info struct; needed for assembling proper
 	// manifest lists
 	mfInfo.length = int64(len(unverifiedManifest.Canonical))
-	mfInfo.jsonBytes = unverifiedManifest.Canonical
+	mfInfo.jsonBytes, err = unverifiedManifest.MarshalJSON()
+	if err != nil {
+		return nil, mfInfo, err
+	}
 	return img, mfInfo, nil
 }
 
