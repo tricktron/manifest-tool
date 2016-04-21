@@ -8,6 +8,7 @@ import (
 	"net/http"
 	"net/url"
 	"path/filepath"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
@@ -38,9 +39,22 @@ type ManifestEntry struct {
 	Platform manifestlist.PlatformSpec
 }
 
+// we will store up a list of blobs we must ask the registry
+// to cross-mount into our target namespace
 type blobMount struct {
 	FromRepo string
 	Digest   string
+}
+
+// if we have mounted blobs referenced from manifests from
+// outside the target repository namespace we will need to
+// push them to our target's repo as they will be references
+// from the final manifest list object we push
+type manifestPush struct {
+	Name      string
+	Digest    string
+	JsonBytes []byte
+	MediaType string
 }
 
 func PutManifestList(c *cli.Context, filePath string) (string, error) {
@@ -48,6 +62,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		yamlInput         YAMLInput
 		manifestList      manifestlist.ManifestList
 		blobMountRequests []blobMount
+		manifestRequests  []manifestPush
 	)
 
 	filename, err := filepath.Abs(filePath)
@@ -118,8 +133,15 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			for _, layer := range imgMfst.Layers {
 				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: repoInfo.RemoteName(), Digest: layer})
 			}
+			// also must add the manifest to be pushed in the target namespace
+			logrus.Debugf("Adding manifest %q -> to be pushed to %q as a manifest reference", repoInfo.RemoteName(), repoName)
+			manifestRequests = append(manifestRequests, manifestPush{
+				Name:      repoInfo.RemoteName(),
+				Digest:    imgMfst.Digest,
+				JsonBytes: imgMfst.CanonicalJson,
+				MediaType: imgMfst.MediaType,
+			})
 		}
-
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
@@ -130,7 +152,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	if err != nil {
 		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
 	}
-	pushURL, err := createURLFromTargetRef(targetRef, urlBuilder)
+	pushURL, err := createManifestURLFromRef(targetRef, urlBuilder)
 	if err != nil {
 		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
@@ -162,6 +184,12 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	// as references
 	if err := mountBlobs(httpClient, urlBuilder, targetRef, blobMountRequests); err != nil {
 		return "", fmt.Errorf("Couldn't mount blobs for cross-repository push: %v", err)
+	}
+
+	// we also must push any manifests that are referenced in the manifest list into
+	// the target namespace
+	if err := pushReferences(httpClient, urlBuilder, targetRef, manifestRequests); err != nil {
+		return "", fmt.Errorf("Couldn't push manifests referenced in our manifest list: %v", err)
 	}
 
 	resp, err := httpClient.Do(putRequest)
@@ -223,7 +251,7 @@ func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint r
 	return httpClient, nil
 }
 
-func createURLFromTargetRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
+func createManifestURLFromRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
 	// get rid of hostname so the target URL is constructed properly
 	_, name := splitHostname(targetRef.String())
 	targetRef, err := reference.ParseNamed(name)
@@ -273,6 +301,47 @@ func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string,
 		logrus.Debugf("repoName: %v", repoName)
 	}
 	return endpoint, repoName, nil
+}
+
+func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, manifests []manifestPush) error {
+	pushTarget := ref.Name()
+	for i, manifest := range manifests {
+		// create a dummy tag from the integer count and the original name (in the original repo)
+		targetRef, err := reference.ParseNamed(fmt.Sprintf("%s:%d%s", pushTarget, i, strings.Replace(manifest.Name, "/", "_", -1)))
+		if err != nil {
+			return fmt.Errorf("Error creating manifest name target for referenced manifest %q: %v", manifest.Name, err)
+		}
+		pushURL, err := createManifestURLFromRef(targetRef, urlBuilder)
+		if err != nil {
+			return fmt.Errorf("Error setting up manifest push URL for manifest references for %q: %v", manifest.Name, err)
+		}
+		logrus.Debugf("manifest reference push URL: %s", pushURL)
+
+		pushRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(manifest.JsonBytes))
+		if err != nil {
+			return fmt.Errorf("HTTP PUT request creation for manifest reference push failed: %v", err)
+		}
+		pushRequest.Header.Set("Content-Type", manifest.MediaType)
+		resp, err := httpClient.Do(pushRequest)
+		if err != nil {
+			return fmt.Errorf("PUT of manifest reference failed: %v", err)
+		}
+
+		resp.Body.Close()
+		if !statusSuccess(resp.StatusCode) {
+			return fmt.Errorf("Referenced manifest push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
+		}
+		dgstHeader := resp.Header.Get("Docker-Content-Digest")
+		dgst, err := digest.ParseDigest(dgstHeader)
+		if err != nil {
+			return fmt.Errorf("Couldn't parse pushed manifest digest response: %v", err)
+		}
+		if string(dgst) != manifest.Digest {
+			return fmt.Errorf("Pushed referenced manifest received a different digest: expected %s, got %s", manifest.Digest, string(dgst))
+		}
+		logrus.Debugf("referenced manifest %q pushed; digest matches: %s", manifest.Name, string(dgst))
+	}
+	return nil
 }
 
 func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, blobsRequested []blobMount) error {

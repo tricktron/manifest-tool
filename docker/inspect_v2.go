@@ -38,6 +38,7 @@ type manifestInfo struct {
 	digest      digest.Digest
 	platform    manifestlist.PlatformSpec
 	length      int64
+	jsonBytes   []byte
 }
 
 func (mf *v2ManifestFetcher) Fetch(ctx context.Context, ref reference.Named) ([]types.ImageInspect, error) {
@@ -210,7 +211,7 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 	// add the size of the manifest to the info struct; needed for assembling proper
 	// manifest lists
 	mfInfo.length = int64(len(unverifiedManifest.Canonical))
-
+	mfInfo.jsonBytes = unverifiedManifest.Canonical
 	return img, mfInfo, nil
 }
 
@@ -340,6 +341,9 @@ func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Name
 	for _, descriptor := range mfst.References() {
 		mfInfo.blobDigests = append(mfInfo.blobDigests, descriptor.Digest)
 	}
+	// add the config reference to the blob digests
+	mfInfo.blobDigests = append(mfInfo.blobDigests, mfst.Config.Digest)
+
 	img, err = image.NewFromJSON(configJSON)
 	if err != nil {
 		return nil, mfInfo, err
@@ -351,7 +355,7 @@ func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Name
 		return nil, mfInfo, err
 	}
 	mfInfo.length = int64(len(mfBytes))
-
+	mfInfo.jsonBytes = mfBytes
 	return img, mfInfo, nil
 }
 

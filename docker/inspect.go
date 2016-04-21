@@ -347,6 +347,7 @@ func makeImageInspect(img *image.Image, tag string, mfInfo manifestInfo, mediaTy
 		Os:              img.OS,
 		Layers:          digests,
 		Platform:        mfInfo.platform,
+		CanonicalJson:   mfInfo.jsonBytes,
 	}
 }
 
