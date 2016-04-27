@@ -1,14 +1,18 @@
 package docker
 
-import(
-"reflect"
-"runtime"
-"strings"
-"testing"
+import (
+	"encoding/json"
+	"io/ioutil"
+	"reflect"
+	"runtime"
+	"strings"
+	"testing"
 
-"github.com/docker/distribution/digest"
-"github.com/docker/distribution/manifest/schema1"
+	"github.com/docker/distribution/digest"
+	"github.com/docker/distribution/manifest/schema1"
+	"github.com/docker/docker/reference"
 )
+
 // TestFixManifestLayers checks that fixManifestLayers removes a duplicate
 // layer, and that it makes no changes to the manifest when called a second
 // time, after the duplicate is removed.
@@ -104,3 +108,60 @@ func TestFixManifestLayersBadParent(t *testing.T) {
 	}
 }
 
+// TestValidateManifest verifies the validateManifest function
+func TestValidateManifest(t *testing.T) {
+	// TODO Windows: Fix this unit text
+	if runtime.GOOS == "windows" {
+		t.Skip("Needs fixing on Windows")
+	}
+	expectedDigest, err := reference.ParseNamed("repo@sha256:02fee8c3220ba806531f606525eceb83f4feb654f62b207191b1c9209188dedd")
+	if err != nil {
+		t.Fatal("could not parse reference")
+	}
+	expectedFSLayer0 := digest.Digest("sha256:a3ed95caeb02ffe68cdd9fd84406680ae93d633cb16422d00e8a7c22955b46d4")
+
+	// Good manifest
+
+	goodManifestBytes, err := ioutil.ReadFile("fixtures/validate_manifest/good_manifest")
+	if err != nil {
+		t.Fatal("error reading fixture:", err)
+	}
+
+	var goodSignedManifest schema1.SignedManifest
+	err = json.Unmarshal(goodManifestBytes, &goodSignedManifest)
+	if err != nil {
+		t.Fatal("error unmarshaling manifest:", err)
+	}
+
+	verifiedManifest, err := verifySchema1Manifest(&goodSignedManifest, expectedDigest)
+	if err != nil {
+		t.Fatal("validateManifest failed:", err)
+	}
+
+	if verifiedManifest.FSLayers[0].BlobSum != expectedFSLayer0 {
+		t.Fatal("unexpected FSLayer in good manifest")
+	}
+
+	// "Extra data" manifest
+
+	extraDataManifestBytes, err := ioutil.ReadFile("fixtures/validate_manifest/extra_data_manifest")
+	if err != nil {
+		t.Fatal("error reading fixture:", err)
+	}
+
+	var extraDataSignedManifest schema1.SignedManifest
+	err = json.Unmarshal(extraDataManifestBytes, &extraDataSignedManifest)
+	if err != nil {
+		t.Fatal("error unmarshaling manifest:", err)
+	}
+
+	verifiedManifest, err = verifySchema1Manifest(&extraDataSignedManifest, expectedDigest)
+	if err != nil {
+		t.Fatal("validateManifest failed:", err)
+	}
+
+	if verifiedManifest.FSLayers[0].BlobSum != expectedFSLayer0 {
+		t.Fatal("unexpected FSLayer in extra data manifest")
+	}
+
+}
