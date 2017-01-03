@@ -9,8 +9,8 @@ import (
 )
 
 const (
-	version = "0.2"
-	usage   = "inspect and push manifest list images on a registry"
+	version = "0.3"
+	usage   = "inspect and push manifest list images to a registry"
 )
 
 func main() {
@@ -48,7 +48,7 @@ func main() {
 	// currently support inspect and pushml
 	app.Commands = []cli.Command{
 		inspectCmd,
-		pushmlCmd,
+		pushCmd,
 	}
 
 	if err := app.Run(os.Args); err != nil {
