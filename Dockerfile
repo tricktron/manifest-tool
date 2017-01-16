@@ -1,12 +1,4 @@
-FROM debian:jessie
-
-RUN apt-get update && apt-get install -y make git apt-utils curl vim gcc
-
-ENV GO_VERSION 1.6
-RUN curl -fsSL "https://storage.googleapis.com/golang/go${GO_VERSION}.linux-amd64.tar.gz" \
-	| tar -xzC /usr/local
-ENV PATH /go/bin:/usr/local/go/bin:$PATH
-ENV GOPATH /go
+FROM golang:1.7
 
 ENV GO_TOOLS_COMMIT 823804e1ae08dbb14eb807afc7db9993bc9e3cc3
 # Grab Go's cover tool for dead-simple code coverage testing
@@ -31,8 +23,5 @@ RUN set -x \
 		go build -o /usr/local/bin/registry github.com/docker/distribution/cmd/registry \
 	&& rm -rf "$GOPATH"
 
+# The source is bind-mounted into this folder
 WORKDIR /go/src/github.com/estesp/manifest-tool
-
-COPY . /go/src/github.com/estesp/manifest-tool
-
-RUN go build -o manifest

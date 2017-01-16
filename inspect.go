@@ -22,7 +22,8 @@ var inspectCmd = cli.Command{
 	Action: func(c *cli.Context) {
 
 		name := c.Args().First()
-		imgInspect, _, err := docker.GetImageData(c, name)
+		a := getAuthInfo(c)
+		imgInspect, _, err := docker.GetImageData(a, name)
 		if err != nil {
 			logrus.Fatal(err)
 		}

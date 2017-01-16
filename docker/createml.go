@@ -3,41 +3,27 @@ package docker
 import (
 	"bytes"
 	"fmt"
-	"io/ioutil"
+
 	"net"
 	"net/http"
 	"net/url"
-	"path/filepath"
+
 	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
-	"github.com/go-yaml/yaml"
 
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
+
+	"github.com/estesp/manifest-tool/types"
 )
-
-// YAMLInput represents the YAML format input to the pushml
-// command.
-type YAMLInput struct {
-	Image     string
-	Manifests []ManifestEntry
-}
-
-// ManifestEntry represents an entry in the list of manifests to
-// be combined into a manifest list, provided via the YAML input
-type ManifestEntry struct {
-	Image    string
-	Platform manifestlist.PlatformSpec
-}
 
 // we will store up a list of blobs we must ask the registry
 // to cross-mount into our target namespace
@@ -53,30 +39,17 @@ type blobMount struct {
 type manifestPush struct {
 	Name      string
 	Digest    string
-	JsonBytes []byte
+	JSONBytes []byte
 	MediaType string
 }
 
-func PutManifestList(c *cli.Context, filePath string) (string, error) {
+// PutManifestList takes an authentication variable and a yaml spec struct and pushes an image list based on the spec
+func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, error) {
 	var (
-		yamlInput         YAMLInput
 		manifestList      manifestlist.ManifestList
 		blobMountRequests []blobMount
 		manifestRequests  []manifestPush
 	)
-
-	filename, err := filepath.Abs(filePath)
-	if err != nil {
-		return "", fmt.Errorf("Can't resolve path to %q: %v", filePath, err)
-	}
-	yamlFile, err := ioutil.ReadFile(filename)
-	if err != nil {
-		return "", fmt.Errorf("Can't read YAML file %q: %v", filePath, err)
-	}
-	err = yaml.Unmarshal(yamlFile, &yamlInput)
-	if err != nil {
-		return "", fmt.Errorf("Can't unmarshal YAML file %q: %v", filePath, err)
-	}
 
 	// process the final image name reference for the manifest list
 	targetRef, err := reference.ParseNamed(yamlInput.Image)
@@ -100,7 +73,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
 			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
 		}
-		mfstData, repoInfo, err := GetImageData(c, img.Image)
+		mfstData, repoInfo, err := GetImageData(a, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
@@ -138,7 +111,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 			manifestRequests = append(manifestRequests, manifestPush{
 				Name:      repoInfo.RemoteName(),
 				Digest:    imgMfst.Digest,
-				JsonBytes: imgMfst.CanonicalJson,
+				JSONBytes: imgMfst.CanonicalJSON,
 				MediaType: imgMfst.MediaType,
 			})
 		}
@@ -174,7 +147,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	}
 	putRequest.Header.Set("Content-Type", mediaType)
 
-	httpClient, err := getHTTPClient(c, targetRepo, targetEndpoint, repoName)
+	httpClient, err := getHTTPClient(a, targetRepo, targetEndpoint, repoName)
 	if err != nil {
 		return "", fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
 	}
@@ -209,7 +182,7 @@ func PutManifestList(c *cli.Context, filePath string) (string, error) {
 	return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
 }
 
-func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
+func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
 	// get the http transport, this will be used in a client to upload manifest
 	// TODO - add separate function get client
 	base := &http.Transport{
@@ -223,7 +196,7 @@ func getHTTPClient(c *cli.Context, repoInfo *registry.RepositoryInfo, endpoint r
 		TLSClientConfig:     endpoint.TLSConfig,
 		DisableKeepAlives:   true,
 	}
-	authConfig, err := getAuthConfig(c, repoInfo.Index)
+	authConfig, err := getAuthConfig(a, repoInfo.Index)
 	if err != nil {
 		return nil, fmt.Errorf("Cannot retrieve authconfig: %v", err)
 	}
@@ -317,7 +290,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 		}
 		logrus.Debugf("manifest reference push URL: %s", pushURL)
 
-		pushRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(manifest.JsonBytes))
+		pushRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(manifest.JSONBytes))
 		if err != nil {
 			return fmt.Errorf("HTTP PUT request creation for manifest reference push failed: %v", err)
 		}

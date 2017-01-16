@@ -11,7 +11,6 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/codegangsta/cli"
 	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
@@ -151,7 +150,8 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 	return nil
 }
 
-func GetImageData(c *cli.Context, name string) ([]types.ImageInspect, *registry.RepositoryInfo, error) {
+// GetImageData takes registry authentication information and a name of the image to return information about
+func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *registry.RepositoryInfo, error) {
 	if err := validateName(name); err != nil {
 		return nil, nil, err
 	}
@@ -163,7 +163,7 @@ func GetImageData(c *cli.Context, name string) ([]types.ImageInspect, *registry.
 	if err != nil {
 		return nil, nil, err
 	}
-	authConfig, err := getAuthConfig(c, repoInfo.Index)
+	authConfig, err := getAuthConfig(a, repoInfo.Index)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -285,15 +285,15 @@ func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.Reposi
 	return nil, fmt.Errorf("unknown version %d for registry %s", endpoint.Version, endpoint.URL)
 }
 
-func getAuthConfig(c *cli.Context, index *registryTypes.IndexInfo) (engineTypes.AuthConfig, error) {
+func getAuthConfig(a *types.AuthInfo, index *registryTypes.IndexInfo) (engineTypes.AuthConfig, error) {
 
 	var (
-		username      = c.GlobalString("username")
-		password      = c.GlobalString("password")
-		cfg           = c.GlobalString("docker-cfg")
+		username      = a.Username
+		password      = a.Password
+		cfg           = a.DockerCfg
 		defAuthConfig = engineTypes.AuthConfig{
-			Username: c.GlobalString("username"),
-			Password: c.GlobalString("password"),
+			Username: a.Username,
+			Password: a.Password,
 			Email:    "stub@example.com",
 		}
 	)
@@ -347,7 +347,7 @@ func makeImageInspect(img *image.Image, tag string, mfInfo manifestInfo, mediaTy
 		Os:              img.OS,
 		Layers:          digests,
 		Platform:        mfInfo.platform,
-		CanonicalJson:   mfInfo.jsonBytes,
+		CanonicalJSON:   mfInfo.jsonBytes,
 	}
 }
 

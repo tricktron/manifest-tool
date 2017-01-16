@@ -5,6 +5,7 @@ import (
 	containerTypes "github.com/docker/engine-api/types/container"
 )
 
+// ImageInspect holds information about an image in a registry
 type ImageInspect struct {
 	Size            int64
 	MediaType       string
@@ -21,5 +22,26 @@ type ImageInspect struct {
 	Os              string
 	Layers          []string
 	Platform        manifestlist.PlatformSpec
-	CanonicalJson   []byte
+	CanonicalJSON   []byte
+}
+
+// YAMLInput represents the YAML format input to the pushml
+// command.
+type YAMLInput struct {
+	Image     string
+	Manifests []ManifestEntry
+}
+
+// ManifestEntry represents an entry in the list of manifests to
+// be combined into a manifest list, provided via the YAML input
+type ManifestEntry struct {
+	Image    string
+	Platform manifestlist.PlatformSpec
+}
+
+// AuthInfo holds information about how manifest-tool should connect and authenticate to the docker registry
+type AuthInfo struct {
+	Username  string
+	Password  string
+	DockerCfg string
 }
