@@ -17,7 +17,7 @@ import (
 
 var pushCmd = cli.Command{
 	Name:  "push",
-	Usage: "push a manifest list to a registry via a YAML config",
+	Usage: "push a manifest list entry to a registry with provided image details",
 	Subcommands: []cli.Command{
 		{
 			Name:  "from-spec",
