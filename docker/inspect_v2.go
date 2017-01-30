@@ -8,19 +8,18 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/client"
+	engineTypes "github.com/docker/docker/api/types"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/image/v1"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
-	engineTypes "github.com/docker/engine-api/types"
 	"github.com/estesp/manifest-tool/types"
+	"github.com/opencontainers/go-digest"
 	"golang.org/x/net/context"
 )
 
@@ -30,7 +29,7 @@ type v2ManifestFetcher struct {
 	repo        distribution.Repository
 	confirmedV2 bool
 	authConfig  engineTypes.AuthConfig
-	service     *registry.Service
+	service     registry.Service
 }
 
 type manifestInfo struct {
@@ -90,7 +89,7 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 		// NOTE: not using TagService.Get, since it uses HEAD requests
 		// against the manifests endpoint, which are not supported by
 		// all registry versions.
-		manifest, err = manSvc.Get(ctx, "", client.WithTag(tagged.Tag()))
+		manifest, err = manSvc.Get(ctx, "", distribution.WithTag(tagged.Tag()))
 		if err != nil {
 			return nil, allowV1Fallback(err)
 		}
@@ -223,10 +222,7 @@ func verifySchema1Manifest(signedManifest *schema1.SignedManifest, ref reference
 	// important to do this first, before any other content validation. If the
 	// digest cannot be verified, don't even bother with those other things.
 	if digested, isCanonical := ref.(reference.Canonical); isCanonical {
-		verifier, err := digest.NewDigestVerifier(digested.Digest())
-		if err != nil {
-			return nil, err
-		}
+		verifier := digested.Digest().Verifier()
 		if _, err := verifier.Write(signedManifest.Canonical); err != nil {
 			return nil, err
 		}
@@ -370,10 +366,7 @@ func (mf *v2ManifestFetcher) pullSchema2ImageConfig(ctx context.Context, dgst di
 	}
 
 	// Verify image config digest
-	verifier, err := digest.NewDigestVerifier(dgst)
-	if err != nil {
-		return nil, err
-	}
+	verifier := dgst.Verifier()
 	if _, err := verifier.Write(configJSON); err != nil {
 		return nil, err
 	}
@@ -442,10 +435,7 @@ func schema2ManifestDigest(ref reference.Named, mfst distribution.Manifest) (dig
 
 	// If pull by digest, then verify the manifest digest.
 	if digested, isDigested := ref.(reference.Canonical); isDigested {
-		verifier, err := digest.NewDigestVerifier(digested.Digest())
-		if err != nil {
-			return "", err
-		}
+		verifier := digested.Digest().Verifier()
 		if _, err := verifier.Write(canonical); err != nil {
 			return "", err
 		}

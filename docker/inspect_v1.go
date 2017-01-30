@@ -10,13 +10,13 @@ import (
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/registry/client/transport"
+	engineTypes "github.com/docker/docker/api/types"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/image/v1"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
-	engineTypes "github.com/docker/engine-api/types"
 	"github.com/estesp/manifest-tool/types"
 	"golang.org/x/net/context"
 )
@@ -28,7 +28,7 @@ type v1ManifestFetcher struct {
 	confirmedV2 bool
 	// wrap in a config?
 	authConfig engineTypes.AuthConfig
-	service    *registry.Service
+	service    registry.Service
 	session    *registry.Session
 }
 
@@ -126,7 +126,7 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 	img := repoData.ImgList[tagID]
 
 	for _, ep := range mf.repoInfo.Index.Mirrors {
-		if pulledImg, err = mf.pullImageJSON(img.ID, ep, repoData.Tokens); err != nil {
+		if pulledImg, err = mf.pullImageJSON(img.ID, ep); err != nil {
 			// Don't report errors when pulling from mirrors.
 			logrus.Debugf("Error pulling image json of %s:%s, mirror: %s, %s", mf.repoInfo.FullName(), img.Tag, ep, err)
 			continue
@@ -135,7 +135,7 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 	}
 	if pulledImg == nil {
 		for _, ep := range repoData.Endpoints {
-			if pulledImg, err = mf.pullImageJSON(img.ID, ep, repoData.Tokens); err != nil {
+			if pulledImg, err = mf.pullImageJSON(img.ID, ep); err != nil {
 				// It's not ideal that only the last error is returned, it would be better to concatenate the errors.
 				logrus.Infof("Error pulling image json of %s:%s, endpoint: %s, %v", mf.repoInfo.FullName(), img.Tag, ep, err)
 				continue
@@ -155,7 +155,7 @@ func (mf *v1ManifestFetcher) fetchWithSession(ctx context.Context, ref reference
 	return imageList, nil
 }
 
-func (mf *v1ManifestFetcher) pullImageJSON(imgID, endpoint string, token []string) (*image.Image, error) {
+func (mf *v1ManifestFetcher) pullImageJSON(imgID, endpoint string) (*image.Image, error) {
 	imgJSON, _, err := mf.session.GetRemoteImageJSON(imgID, endpoint)
 	if err != nil {
 		return nil, err

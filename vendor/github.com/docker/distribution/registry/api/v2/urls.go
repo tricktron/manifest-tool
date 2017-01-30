@@ -1,8 +1,10 @@
 package v2
 
 import (
+	"net"
 	"net/http"
 	"net/url"
+	"strconv"
 	"strings"
 
 	"github.com/docker/distribution/reference"
@@ -17,40 +19,46 @@ import (
 // under "/foo/v2/...". Most application will only provide a schema, host and
 // port, such as "https://localhost:5000/".
 type URLBuilder struct {
-	root   *url.URL // url root (ie http://localhost/)
-	router *mux.Router
+	root     *url.URL // url root (ie http://localhost/)
+	router   *mux.Router
+	relative bool
 }
 
 // NewURLBuilder creates a URLBuilder with provided root url object.
-func NewURLBuilder(root *url.URL) *URLBuilder {
+func NewURLBuilder(root *url.URL, relative bool) *URLBuilder {
 	return &URLBuilder{
-		root:   root,
-		router: Router(),
+		root:     root,
+		router:   Router(),
+		relative: relative,
 	}
 }
 
 // NewURLBuilderFromString workes identically to NewURLBuilder except it takes
 // a string argument for the root, returning an error if it is not a valid
 // url.
-func NewURLBuilderFromString(root string) (*URLBuilder, error) {
+func NewURLBuilderFromString(root string, relative bool) (*URLBuilder, error) {
 	u, err := url.Parse(root)
 	if err != nil {
 		return nil, err
 	}
 
-	return NewURLBuilder(u), nil
+	return NewURLBuilder(u, relative), nil
 }
 
 // NewURLBuilderFromRequest uses information from an *http.Request to
 // construct the root url.
-func NewURLBuilderFromRequest(r *http.Request) *URLBuilder {
+func NewURLBuilderFromRequest(r *http.Request, relative bool) *URLBuilder {
 	var scheme string
 
 	forwardedProto := r.Header.Get("X-Forwarded-Proto")
+	// TODO: log the error
+	forwardedHeader, _, _ := parseForwardedHeader(r.Header.Get("Forwarded"))
 
 	switch {
 	case len(forwardedProto) > 0:
 		scheme = forwardedProto
+	case len(forwardedHeader["proto"]) > 0:
+		scheme = forwardedHeader["proto"]
 	case r.TLS != nil:
 		scheme = "https"
 	case len(r.URL.Scheme) > 0:
@@ -60,14 +68,46 @@ func NewURLBuilderFromRequest(r *http.Request) *URLBuilder {
 	}
 
 	host := r.Host
-	forwardedHost := r.Header.Get("X-Forwarded-Host")
-	if len(forwardedHost) > 0 {
+
+	if forwardedHost := r.Header.Get("X-Forwarded-Host"); len(forwardedHost) > 0 {
 		// According to the Apache mod_proxy docs, X-Forwarded-Host can be a
 		// comma-separated list of hosts, to which each proxy appends the
 		// requested host. We want to grab the first from this comma-separated
 		// list.
 		hosts := strings.SplitN(forwardedHost, ",", 2)
 		host = strings.TrimSpace(hosts[0])
+	} else if addr, exists := forwardedHeader["for"]; exists {
+		host = addr
+	} else if h, exists := forwardedHeader["host"]; exists {
+		host = h
+	}
+
+	portLessHost, port := host, ""
+	if !isIPv6Address(portLessHost) {
+		// with go 1.6, this would treat the last part of IPv6 address as a port
+		portLessHost, port, _ = net.SplitHostPort(host)
+	}
+	if forwardedPort := r.Header.Get("X-Forwarded-Port"); len(port) == 0 && len(forwardedPort) > 0 {
+		ports := strings.SplitN(forwardedPort, ",", 2)
+		forwardedPort = strings.TrimSpace(ports[0])
+		if _, err := strconv.ParseInt(forwardedPort, 10, 32); err == nil {
+			port = forwardedPort
+		}
+	}
+
+	if len(portLessHost) > 0 {
+		host = portLessHost
+	}
+	if len(port) > 0 {
+		// remove enclosing brackets of ipv6 address otherwise they will be duplicated
+		if len(host) > 1 && host[0] == '[' && host[len(host)-1] == ']' {
+			host = host[1 : len(host)-1]
+		}
+		// JoinHostPort properly encloses ipv6 addresses in square brackets
+		host = net.JoinHostPort(host, port)
+	} else if isIPv6Address(host) && host[0] != '[' {
+		// ipv6 needs to be enclosed in square brackets in urls
+		host = "[" + host + "]"
 	}
 
 	basePath := routeDescriptorsMap[RouteNameBase].Path
@@ -85,7 +125,7 @@ func NewURLBuilderFromRequest(r *http.Request) *URLBuilder {
 		u.Path = requestPath[0 : index+1]
 	}
 
-	return NewURLBuilder(u)
+	return NewURLBuilder(u, relative)
 }
 
 // BuildBaseURL constructs a base url for the API, typically just "/v2/".
@@ -194,18 +234,23 @@ func (ub *URLBuilder) cloneRoute(name string) clonedRoute {
 	*route = *ub.router.GetRoute(name) // clone the route
 	*root = *ub.root
 
-	return clonedRoute{Route: route, root: root}
+	return clonedRoute{Route: route, root: root, relative: ub.relative}
 }
 
 type clonedRoute struct {
 	*mux.Route
-	root *url.URL
+	root     *url.URL
+	relative bool
 }
 
 func (cr clonedRoute) URL(pairs ...string) (*url.URL, error) {
 	routeURL, err := cr.Route.URL(pairs...)
 	if err != nil {
 		return nil, err
+	}
+
+	if cr.relative {
+		return routeURL, nil
 	}
 
 	if routeURL.Scheme == "" && routeURL.User == nil && routeURL.Host == "" {
@@ -241,4 +286,29 @@ func appendValues(u string, values ...url.Values) string {
 	}
 
 	return appendValuesURL(up, values...).String()
+}
+
+// isIPv6Address returns true if given string is a valid IPv6 address. No port is allowed. The address may be
+// enclosed in square brackets.
+func isIPv6Address(host string) bool {
+	if len(host) > 1 && host[0] == '[' && host[len(host)-1] == ']' {
+		host = host[1 : len(host)-1]
+	}
+	// The IPv6 scoped addressing zone identifier starts after the last percent sign.
+	if i := strings.LastIndexByte(host, '%'); i > 0 {
+		host = host[:i]
+	}
+	ip := net.ParseIP(host)
+	if ip == nil {
+		return false
+	}
+	if ip.To16() == nil {
+		return false
+	}
+	if ip.To4() == nil {
+		return true
+	}
+	// dot can be present in ipv4-mapped address, it needs to come after a colon though
+	i := strings.IndexAny(host, ":.")
+	return i >= 0 && host[i] == ':'
 }

@@ -2,7 +2,7 @@ package types
 
 import (
 	"github.com/docker/distribution/manifest/manifestlist"
-	containerTypes "github.com/docker/engine-api/types/container"
+	"github.com/docker/docker/api/types/container"
 )
 
 // ImageInspect holds information about an image in a registry
@@ -14,10 +14,10 @@ type ImageInspect struct {
 	RepoTags        []string
 	Comment         string
 	Created         string
-	ContainerConfig *containerTypes.Config
+	ContainerConfig *container.Config
 	DockerVersion   string
 	Author          string
-	Config          *containerTypes.Config
+	Config          *container.Config
 	Architecture    string
 	Os              string
 	Layers          []string

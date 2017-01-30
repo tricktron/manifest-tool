@@ -5,7 +5,7 @@ import (
 
 	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
-	"github.com/docker/docker/cliconfig"
+	"github.com/docker/docker/cli/config"
 )
 
 const (
@@ -35,7 +35,7 @@ func main() {
 		},
 		cli.StringFlag{
 			Name:  "docker-cfg",
-			Value: cliconfig.ConfigDir(),
+			Value: config.Dir(),
 			Usage: "Docker's cli config for auth",
 		},
 	}

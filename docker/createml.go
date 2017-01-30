@@ -12,11 +12,11 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
-	"github.com/docker/distribution/digest"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
+	"github.com/opencontainers/go-digest"
 
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/reference"
@@ -90,7 +90,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 		manifest := manifestlist.ManifestDescriptor{
 			Platform: img.Platform,
 		}
-		manifest.Descriptor.Digest, err = digest.ParseDigest(imgMfst.Digest)
+		manifest.Descriptor.Digest, err = digest.Parse(imgMfst.Digest)
 		manifest.Size = imgMfst.Size
 		manifest.MediaType = imgMfst.MediaType
 
@@ -121,7 +121,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 	// Set the schema version
 	manifestList.Versioned = manifestlist.SchemaVersion
 
-	urlBuilder, err := v2.NewURLBuilderFromString(targetEndpoint.URL.String())
+	urlBuilder, err := v2.NewURLBuilderFromString(targetEndpoint.URL.String(), false)
 	if err != nil {
 		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
 	}
@@ -173,7 +173,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 
 	if statusSuccess(resp.StatusCode) {
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
-		dgst, err := digest.ParseDigest(dgstHeader)
+		dgst, err := digest.Parse(dgstHeader)
 		if err != nil {
 			return "", err
 		}
@@ -202,7 +202,7 @@ func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoin
 	}
 	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(nil), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
-	challengeManager, _, err := registry.PingV2Registry(endpoint, authTransport)
+	challengeManager, _, err := registry.PingV2Registry(endpoint.URL, authTransport)
 	if err != nil {
 		return nil, fmt.Errorf("Ping of V2 registry failed: %v", err)
 	}
@@ -305,7 +305,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 			return fmt.Errorf("Referenced manifest push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
 		}
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
-		dgst, err := digest.ParseDigest(dgstHeader)
+		dgst, err := digest.Parse(dgstHeader)
 		if err != nil {
 			return fmt.Errorf("Couldn't parse pushed manifest digest response: %v", err)
 		}

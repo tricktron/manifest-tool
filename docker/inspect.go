@@ -17,15 +17,15 @@ import (
 	"github.com/docker/distribution/registry/client"
 
 	"github.com/docker/docker/api"
-	"github.com/docker/docker/cliconfig"
+	engineTypes "github.com/docker/docker/api/types"
+	registryTypes "github.com/docker/docker/api/types/registry"
+	"github.com/docker/docker/api/types/versions"
+	"github.com/docker/docker/cli/config"
 	"github.com/docker/docker/distribution"
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
-	versionPkg "github.com/docker/docker/pkg/version"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
-	engineTypes "github.com/docker/engine-api/types"
-	registryTypes "github.com/docker/engine-api/types/registry"
 	"github.com/estesp/manifest-tool/types"
 	"golang.org/x/net/context"
 )
@@ -265,7 +265,7 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 	return nil, nil, lastErr
 }
 
-func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, authConfig engineTypes.AuthConfig, registryService *registry.Service) (manifestFetcher, error) {
+func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, authConfig engineTypes.AuthConfig, registryService registry.Service) (manifestFetcher, error) {
 	switch endpoint.Version {
 	case registry.APIVersion2:
 		return &v2ManifestFetcher{
@@ -302,7 +302,7 @@ func getAuthConfig(a *types.AuthInfo, index *registryTypes.IndexInfo) (engineTyp
 		return defAuthConfig, nil
 	}
 
-	confFile, err := cliconfig.Load(cfg)
+	confFile, err := config.Load(cfg)
 	if err != nil {
 		return engineTypes.AuthConfig{}, err
 	}
@@ -360,7 +360,7 @@ func makeRawConfigFromV1Config(imageJSON []byte, rootfs *image.RootFS, history [
 		return nil, err
 	}
 
-	useFallback := versionPkg.Version(dver.DockerVersion).LessThan("1.8.3")
+	useFallback := versions.LessThan(dver.DockerVersion, "1.8.3")
 
 	if useFallback {
 		var v1Image image.V1Image

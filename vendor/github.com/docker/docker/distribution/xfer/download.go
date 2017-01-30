@@ -7,6 +7,7 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/distribution"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/layer"
 	"github.com/docker/docker/pkg/archive"
@@ -21,16 +22,27 @@ const maxDownloadAttempts = 5
 // registers and downloads those, taking into account dependencies between
 // layers.
 type LayerDownloadManager struct {
-	layerStore layer.Store
-	tm         TransferManager
+	layerStore   layer.Store
+	tm           TransferManager
+	waitDuration time.Duration
+}
+
+// SetConcurrency sets the max concurrent downloads for each pull
+func (ldm *LayerDownloadManager) SetConcurrency(concurrency int) {
+	ldm.tm.SetConcurrency(concurrency)
 }
 
 // NewLayerDownloadManager returns a new LayerDownloadManager.
-func NewLayerDownloadManager(layerStore layer.Store, concurrencyLimit int) *LayerDownloadManager {
-	return &LayerDownloadManager{
-		layerStore: layerStore,
-		tm:         NewTransferManager(concurrencyLimit),
+func NewLayerDownloadManager(layerStore layer.Store, concurrencyLimit int, options ...func(*LayerDownloadManager)) *LayerDownloadManager {
+	manager := LayerDownloadManager{
+		layerStore:   layerStore,
+		tm:           NewTransferManager(concurrencyLimit),
+		waitDuration: time.Second,
 	}
+	for _, option := range options {
+		option(&manager)
+	}
+	return &manager
 }
 
 type downloadTransfer struct {
@@ -81,7 +93,7 @@ type DownloadDescriptorWithRegistered interface {
 // the layer store, and the key is not used by an in-progress download, the
 // Download method is called to get the layer tar data. Layers are then
 // registered in the appropriate order.  The caller must call the returned
-// release function once it is is done with the returned RootFS object.
+// release function once it is done with the returned RootFS object.
 func (ldm *LayerDownloadManager) Download(ctx context.Context, initialRootFS image.RootFS, layers []DownloadDescriptor, progressOutput progress.Output) (image.RootFS, func(), error) {
 	var (
 		topLayer       layer.Layer
@@ -263,7 +275,7 @@ func (ldm *LayerDownloadManager) makeDownloadFunc(descriptor DownloadDescriptor,
 
 				logrus.Errorf("Download failed, retrying: %v", err)
 				delay := retries * 5
-				ticker := time.NewTicker(time.Second)
+				ticker := time.NewTicker(ldm.waitDuration)
 
 			selectLoop:
 				for {
@@ -313,7 +325,15 @@ func (ldm *LayerDownloadManager) makeDownloadFunc(descriptor DownloadDescriptor,
 				return
 			}
 
-			d.layer, err = d.layerStore.Register(inflatedLayerData, parentLayer)
+			var src distribution.Descriptor
+			if fs, ok := descriptor.(distribution.Describable); ok {
+				src = fs.Descriptor()
+			}
+			if ds, ok := d.layerStore.(layer.DescribableStore); ok {
+				d.layer, err = ds.RegisterWithDescriptor(inflatedLayerData, parentLayer, src)
+			} else {
+				d.layer, err = d.layerStore.Register(inflatedLayerData, parentLayer)
+			}
 			if err != nil {
 				select {
 				case <-d.Transfer.Context().Done():
@@ -404,7 +424,15 @@ func (ldm *LayerDownloadManager) makeDownloadFuncFromDownload(descriptor Downloa
 			}
 			defer layerReader.Close()
 
-			d.layer, err = d.layerStore.Register(layerReader, parentLayer)
+			var src distribution.Descriptor
+			if fs, ok := l.(distribution.Describable); ok {
+				src = fs.Descriptor()
+			}
+			if ds, ok := d.layerStore.(layer.DescribableStore); ok {
+				d.layer, err = ds.RegisterWithDescriptor(layerReader, parentLayer, src)
+			} else {
+				d.layer, err = d.layerStore.Register(layerReader, parentLayer)
+			}
 			if err != nil {
 				d.err = fmt.Errorf("failed to register layer: %v", err)
 				return
