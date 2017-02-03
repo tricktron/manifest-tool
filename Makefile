@@ -32,6 +32,12 @@ build-container:
 clean:
 	rm -f manifest-tool
 
+cross:
+	hack/cross.sh
+
+cross-clean:
+	rm -f manifest-tool-*
+
 install:
 	install -d -m 0755 ${INSTALLDIR}
 	install -m 755 manifest-tool ${INSTALLDIR}
