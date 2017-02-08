@@ -38,6 +38,9 @@ cross:
 cross-clean:
 	rm -f manifest-tool-*
 
+signrelease:
+	hack/sign-release.sh
+
 install:
 	install -d -m 0755 ${INSTALLDIR}
 	install -m 755 manifest-tool ${INSTALLDIR}
