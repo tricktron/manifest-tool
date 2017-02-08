@@ -49,8 +49,10 @@ var inspectCmd = cli.Command{
 			return
 		}
 		// more than one response--this is a manifest list
-		fmt.Printf("%s is a manifest list containing the following %d manifest references:\n", name, len(imgInspect))
-		for i, img := range imgInspect {
+		fmt.Printf("Name:   %s (Type: %s)\n", name, imgInspect[0].MediaType)
+		fmt.Printf("Digest: %s\n", imgInspect[0].Digest)
+		fmt.Printf(" * Contains %d manifest references:\n", len(imgInspect)-1)
+		for i, img := range imgInspect[1:] {
 			fmt.Printf("%d    Mfst Type: %s\n", i+1, img.MediaType)
 			fmt.Printf("%d       Digest: %s\n", i+1, img.Digest)
 			fmt.Printf("%d  Mfst Length: %d\n", i+1, img.Size)
