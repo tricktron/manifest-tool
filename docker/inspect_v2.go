@@ -451,7 +451,7 @@ func schema2ManifestDigest(ref reference.Named, mfst distribution.Manifest) (dig
 }
 
 // pullManifestList handles "manifest lists" which point to various
-// platform-specifc manifests.
+// platform-specific manifests.
 func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference.Named, mfstList *manifestlist.DeserializedManifestList) ([]*image.Image, []manifestInfo, []string, error) {
 	var (
 		imageList = []*image.Image{}
@@ -463,6 +463,12 @@ func (mf *v2ManifestFetcher) pullManifestList(ctx context.Context, ref reference
 		return nil, nil, nil, err
 	}
 	logrus.Debugf("Pulling manifest list entries for ML digest %v", manifestListDigest)
+
+	// for displaying basic information on the "outer" manifest list entry, we will
+	// create the first entry in the returned arrays to hold the manifest list details:
+	mfInfos = append(mfInfos, manifestInfo{digest: manifestListDigest})
+	mediaType = append(mediaType, mfstList.MediaType)
+	imageList = append(imageList, &image.Image{})
 
 	for _, manifestDescriptor := range mfstList.Manifests {
 		manSvc, err := mf.repo.Manifests(ctx)

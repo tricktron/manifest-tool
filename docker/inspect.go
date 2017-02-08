@@ -11,11 +11,11 @@ import (
 	"time"
 
 	"github.com/Sirupsen/logrus"
+	"github.com/docker/distribution/manifest/manifestlist"
 	distreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
-
 	"github.com/docker/docker/api"
 	engineTypes "github.com/docker/docker/api/types"
 	registryTypes "github.com/docker/docker/api/types/registry"
@@ -327,6 +327,16 @@ func makeImageInspect(img *image.Image, tag string, mfInfo manifestInfo, mediaTy
 	if err := mfInfo.digest.Validate(); err == nil {
 		digest = mfInfo.digest.String()
 	}
+
+	// for manifest lists, we only want to display the basic info that this is
+	// a manifest list and its digest information:
+	if mediaType == manifestlist.MediaTypeManifestList {
+		return &types.ImageInspect{
+			MediaType: mediaType,
+			Digest:    digest,
+		}
+	}
+
 	var digests []string
 	for _, blobDigest := range mfInfo.blobDigests {
 		digests = append(digests, blobDigest.String())
