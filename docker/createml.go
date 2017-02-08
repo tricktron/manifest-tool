@@ -96,11 +96,11 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 		}
 		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgMfst.Digest, imgMfst.Size)
 
-		// if this image is in a different repo, we need to add the layer/blob digests to the list of
+		// if this image is in a different repo, we need to add the layer & config digests to the list of
 		// requested blob mounts (cross-repository push) before pushing the manifest list
 		if repoName != repoInfo.RemoteName() {
-			logrus.Debugf("Adding layers of %q to blob mount requests", img.Image)
-			for _, layer := range imgMfst.Layers {
+			logrus.Debugf("Adding manifest references of %q to blob mount requests", img.Image)
+			for _, layer := range imgMfst.References {
 				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: repoInfo.RemoteName(), Digest: layer})
 			}
 			// also must add the manifest to be pushed in the target namespace

@@ -34,6 +34,7 @@ type v2ManifestFetcher struct {
 
 type manifestInfo struct {
 	blobDigests []digest.Digest
+	layers      []string
 	digest      digest.Digest
 	platform    manifestlist.PlatformSpec
 	length      int64
@@ -337,11 +338,15 @@ func (mf *v2ManifestFetcher) pullSchema2(ctx context.Context, ref reference.Name
 		}
 	}
 
+	// collect all references so that we can ask for cross-repo blob
+	// mount in the cases where a manifest list is created from images
+	// outside the target repo
 	for _, descriptor := range mfst.References() {
 		mfInfo.blobDigests = append(mfInfo.blobDigests, descriptor.Digest)
 	}
-	// add the config reference to the blob digests
-	mfInfo.blobDigests = append(mfInfo.blobDigests, mfst.Config.Digest)
+	for _, descriptor := range mfst.Layers {
+		mfInfo.layers = append(mfInfo.layers, descriptor.Digest.String())
+	}
 
 	img, err = image.NewFromJSON(configJSON)
 	if err != nil {
