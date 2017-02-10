@@ -15,7 +15,7 @@ const (
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "manifest"
+	app.Name = os.Args[0]
 	app.Version = version
 	app.Usage = usage
 	app.Flags = []cli.Flag{
