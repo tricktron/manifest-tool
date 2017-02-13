@@ -9,13 +9,13 @@ import (
 )
 
 const (
-	version = "0.3.0"
+	version = "0.4.0-dev"
 	usage   = "inspect and push manifest list images to a registry"
 )
 
 func main() {
 	app := cli.NewApp()
-	app.Name = "manifest"
+	app.Name = os.Args[0]
 	app.Version = version
 	app.Usage = usage
 	app.Flags = []cli.Flag{
