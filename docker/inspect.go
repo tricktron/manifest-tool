@@ -22,7 +22,6 @@ import (
 	"github.com/docker/docker/api/types/versions"
 	"github.com/docker/docker/cli/config"
 	"github.com/docker/docker/distribution"
-	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
@@ -172,6 +171,7 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 	}
 	options := registry.ServiceOptions{}
 	options.InsecureRegistries = append(options.InsecureRegistries, "0.0.0.0/0")
+	options.V2Only = true
 	registryService := registry.NewService(options)
 
 	endpoints, err := registryService.LookupPullEndpoints(repoInfo.Hostname())
@@ -191,20 +191,8 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 
 	for _, endpoint := range endpoints {
 		// make sure I can reach the registry, same as docker pull does
-
-		v1endpoint, err := endpoint.ToV1Endpoint(dockerversion.DockerUserAgent(nil), nil)
-		if err != nil {
-			return nil, nil, err
-		}
-		if _, err := v1endpoint.Ping(); err != nil {
-			if strings.Contains(err.Error(), "timeout") {
-				return nil, nil, err
-			}
-			continue
-		}
-
-		if confirmedV2 && endpoint.Version == registry.APIVersion1 {
-			logrus.Debugf("Skipping v1 endpoint %s because v2 registry was detected", endpoint.URL)
+		if endpoint.Version == registry.APIVersion1 {
+			logrus.Debugf("Skipping v1 endpoint %s; manifest list requires v2", endpoint.URL)
 			continue
 		}
 
