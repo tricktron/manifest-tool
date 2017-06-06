@@ -13,11 +13,11 @@ import (
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
-	"github.com/opencontainers/go-digest"
 
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
+	"github.com/opencontainers/go-digest"
 
 	"github.com/estesp/manifest-tool/types"
 )
@@ -353,7 +353,7 @@ func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref referenc
 		}
 
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusCreated {
+		if !statusSuccess(resp.StatusCode) {
 			return fmt.Errorf("Blob mount failed to url %s: HTTP status %d", url, resp.StatusCode)
 		}
 		logrus.Debugf("Mount of blob %s succeeded, location: %q", blob.Digest, resp.Header.Get("Location"))
