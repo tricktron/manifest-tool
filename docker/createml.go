@@ -90,6 +90,15 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 				img.Platform.Architecture = imgMfst.Architecture
 			}
 		}
+		// if the origin image has OSFeature and/or OSVersion information, and
+		// these values were not specified in the creation YAML, then
+		// retain the origin values in the Platform definition for the manifest list:
+		if imgMfst.OSVersion != "" && img.Platform.OSVersion == "" {
+			img.Platform.OSVersion = imgMfst.OSVersion
+		}
+		if len(imgMfst.OSFeatures) > 0 && len(img.Platform.OSFeatures) == 0 {
+			img.Platform.OSFeatures = imgMfst.OSFeatures
+		}
 
 		// validate os/arch input
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
