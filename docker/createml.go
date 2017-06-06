@@ -66,10 +66,6 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 	// for the constituent images:
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
-		// validate os/arch input
-		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
-			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
-		}
 		mfstData, repoInfo, err := GetImageData(a, img.Image)
 		if err != nil {
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
@@ -83,6 +79,22 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 		}
 		// the non-manifest list case will always have exactly one manifest response
 		imgMfst := mfstData[0]
+
+		// fill os/arch from inspected image if not specified in input YAML
+		if img.Platform.OS == "" && img.Platform.Architecture == "" {
+			// prefer a full platform object, if one is already available (and appears to have meaningful content)
+			if imgMfst.Platform.OS != "" || imgMfst.Platform.Architecture != "" {
+				img.Platform = imgMfst.Platform
+			} else if imgMfst.Os != "" || imgMfst.Architecture != "" {
+				img.Platform.OS = imgMfst.Os
+				img.Platform.Architecture = imgMfst.Architecture
+			}
+		}
+
+		// validate os/arch input
+		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
+			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
+		}
 
 		manifest := manifestlist.ManifestDescriptor{
 			Platform: img.Platform,

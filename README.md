@@ -82,10 +82,6 @@ $ sudo make install
 $ make test-integration
 ```
 
-### TODO
-
- 1. Automatically populate OS and architecture from source manifests?
-
 ### License
 
 Apache License 2.0
