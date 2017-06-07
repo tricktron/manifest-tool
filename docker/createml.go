@@ -13,11 +13,11 @@ import (
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
-	"github.com/opencontainers/go-digest"
 
 	"github.com/docker/docker/dockerversion"
 	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
+	"github.com/opencontainers/go-digest"
 
 	"github.com/estesp/manifest-tool/types"
 )
@@ -89,6 +89,15 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 				img.Platform.OS = imgMfst.Os
 				img.Platform.Architecture = imgMfst.Architecture
 			}
+		}
+		// if the origin image has OSFeature and/or OSVersion information, and
+		// these values were not specified in the creation YAML, then
+		// retain the origin values in the Platform definition for the manifest list:
+		if imgMfst.OSVersion != "" && img.Platform.OSVersion == "" {
+			img.Platform.OSVersion = imgMfst.OSVersion
+		}
+		if len(imgMfst.OSFeatures) > 0 && len(img.Platform.OSFeatures) == 0 {
+			img.Platform.OSFeatures = imgMfst.OSFeatures
 		}
 
 		// validate os/arch input
@@ -353,7 +362,7 @@ func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref referenc
 		}
 
 		resp.Body.Close()
-		if resp.StatusCode != http.StatusCreated {
+		if !statusSuccess(resp.StatusCode) {
 			return fmt.Errorf("Blob mount failed to url %s: HTTP status %d", url, resp.StatusCode)
 		}
 		logrus.Debugf("Mount of blob %s succeeded, location: %q", blob.Digest, resp.Header.Get("Location"))
