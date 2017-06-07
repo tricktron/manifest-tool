@@ -22,10 +22,17 @@ var pushCmd = cli.Command{
 		{
 			Name:  "from-spec",
 			Usage: "push a manifest list to a registry via a YAML spec",
+			Flags: []cli.Flag{
+				cli.BoolFlag{
+					Name:  "ignore-missing",
+					Usage: "only warn on missing images defined in YAML spec",
+				},
+			},
 			Action: func(c *cli.Context) {
 
 				filePath := c.Args().First()
 				a := getAuthInfo(c)
+				ignoreMissing := c.Bool("ignore-missing")
 				var yamlInput types.YAMLInput
 
 				filename, err := filepath.Abs(filePath)
@@ -41,7 +48,7 @@ var pushCmd = cli.Command{
 					logrus.Fatalf(fmt.Sprintf("Can't unmarshal YAML file %q: %v", filePath, err))
 				}
 
-				digest, err := docker.PutManifestList(a, yamlInput)
+				digest, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
 				if err != nil {
 					logrus.Fatal(err)
 				}
@@ -64,6 +71,10 @@ var pushCmd = cli.Command{
 					Name:  "target",
 					Usage: "the name of the manifest list image that is going to be produced",
 				},
+				cli.BoolFlag{
+					Name:  "ignore-missing",
+					Usage: "only warn on missing images defined in platform list",
+				},
 			},
 			Action: func(c *cli.Context) {
 
@@ -71,6 +82,7 @@ var pushCmd = cli.Command{
 				platforms := c.String("platforms")
 				templ := c.String("template")
 				target := c.String("target")
+				ignoreMissing := c.Bool("ignore-missing")
 				srcImages := []types.ManifestEntry{}
 
 				if len(platforms) == 0 || len(templ) == 0 || len(target) == 0 {
@@ -99,7 +111,7 @@ var pushCmd = cli.Command{
 					Manifests: srcImages,
 				}
 
-				digest, err := docker.PutManifestList(a, yamlInput)
+				digest, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
 				if err != nil {
 					logrus.Fatal(err)
 				}

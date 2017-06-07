@@ -239,7 +239,7 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 				}
 				continue
 			}
-			logrus.Errorf("Not continuing with pull after error: %v", err)
+			logrus.Infof("Not continuing with pull after error: %v", err)
 			return nil, nil, err
 		}
 

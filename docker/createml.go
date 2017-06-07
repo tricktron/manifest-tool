@@ -41,7 +41,7 @@ type manifestPush struct {
 }
 
 // PutManifestList takes an authentication variable and a yaml spec struct and pushes an image list based on the spec
-func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, error) {
+func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing bool) (string, error) {
 	var (
 		manifestList      manifestlist.ManifestList
 		blobMountRequests []blobMount
@@ -68,6 +68,12 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 	for _, img := range yamlInput.Manifests {
 		mfstData, repoInfo, err := GetImageData(a, img.Image)
 		if err != nil {
+			// if ignoreMissing is true, we will skip this error and simply
+			// log a warning that we couldn't find it in the registry
+			if ignoreMissing {
+				logrus.Warnf("Couldn't find or access image reference %q. Skipping image.", img.Image)
+				continue
+			}
 			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 		if repoInfo.Hostname() != targetRepo.Hostname() {
@@ -136,6 +142,11 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput) (string, erro
 		manifestList.Manifests = append(manifestList.Manifests, manifest)
 	}
 
+	if ignoreMissing && len(manifestList.Manifests) == 0 {
+		// we need to verify we at least have one valid entry in the list
+		// otherwise our manifest list will be totally empty
+		return "", fmt.Errorf("all entries were skipped due to missing source image references; no manifest list to push.")
+	}
 	// Set the schema version
 	manifestList.Versioned = manifestlist.SchemaVersion
 
