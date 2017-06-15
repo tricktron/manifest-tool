@@ -32,6 +32,7 @@ type ImageInspect struct {
 // command.
 type YAMLInput struct {
 	Image     string
+	Tags      []string
 	Manifests []ManifestEntry
 }
 

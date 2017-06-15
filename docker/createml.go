@@ -200,15 +200,55 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	}
 	defer resp.Body.Close()
 
+	var finalDigest string
 	if statusSuccess(resp.StatusCode) {
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
 		dgst, err := digest.Parse(dgstHeader)
 		if err != nil {
 			return "", err
 		}
-		return string(dgst), nil
+		finalDigest = string(dgst)
+	} else {
+		return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
 	}
-	return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
+	// if the YAML includes additional tags, push the added tag references. No other work
+	// should be required as we have already made sure all target blobs are cross-repo
+	// mounted and all referenced manifests are already pushed.
+	for _, tag := range yamlInput.Tags {
+		newRef, err := reference.WithTag(targetRef, tag)
+		if err != nil {
+			return "", fmt.Errorf("Error creating tagged reference for added tag %q: %v", tag, err)
+		}
+		pushURL, err := createManifestURLFromRef(newRef, urlBuilder)
+		if err != nil {
+			return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", newRef, err)
+		}
+		logrus.Debugf("[extra tag %q] push url: %s", tag, pushURL)
+		putRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(p))
+		if err != nil {
+			return "", fmt.Errorf("[extra tag %q] HTTP PUT request creation failed: %v", tag, err)
+		}
+		putRequest.Header.Set("Content-Type", mediaType)
+		resp, err := httpClient.Do(putRequest)
+		if err != nil {
+			return "", fmt.Errorf("[extra tag %q] V2 registry PUT of manifest list failed: %v", tag, err)
+		}
+		defer resp.Body.Close()
+
+		if statusSuccess(resp.StatusCode) {
+			dgstHeader := resp.Header.Get("Docker-Content-Digest")
+			dgst, err := digest.Parse(dgstHeader)
+			if err != nil {
+				return "", err
+			}
+			if string(dgst) != finalDigest {
+				logrus.Warnf("Extra tag %q push resulted in non-matching digest %s (should be %s", tag, string(dgst), finalDigest)
+			}
+		} else {
+			return "", fmt.Errorf("[extra tag %q] Registry push unsuccessful: response %d: %s", tag, resp.StatusCode, resp.Status)
+		}
+	}
+	return finalDigest, nil
 }
 
 func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
