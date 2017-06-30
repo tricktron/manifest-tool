@@ -349,6 +349,13 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 	// for each referenced manifest object in the manifest list (that is outside of our current repo/name)
 	// we need to push by digest the manifest so that it is added as a valid reference in the current
 	// repo. This will allow us to push the manifest list properly later and have all valid references.
+
+	// first get rid of possible hostname so the target URL is constructed properly
+	_, name := splitHostname(ref.String())
+	ref, err := reference.ParseNamed(name)
+	if err != nil {
+		return fmt.Errorf("Error parsing repo/name portion of reference without hostname: %s: %v", name, err)
+	}
 	for _, manifest := range manifests {
 		dgst, err := digest.Parse(manifest.Digest)
 		if err != nil {
