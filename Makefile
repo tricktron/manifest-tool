@@ -5,6 +5,8 @@ INSTALLDIR=${PREFIX}/bin
 MANINSTALLDIR=${PREFIX}/share/man
 
 GIT_BRANCH := $(shell git rev-parse --abbrev-ref HEAD 2>/dev/null)
+COMMIT_NO := $(shell git rev-parse HEAD 2> /dev/null || true)
+COMMIT := $(if $(shell git status --porcelain --untracked-files=no),"${COMMIT_NO}-dirty","${COMMIT_NO}")
 DOCKER_IMAGE := manifest-tool-dev$(if $(GIT_BRANCH),:$(GIT_BRANCH))
 # set env like gobuildtag?
 DOCKER_RUN := docker run --rm -i #$(DOCKER_ENVS)
@@ -21,10 +23,10 @@ all: build
 
 build:
 	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.7 /bin/bash -c "\
-		go build -o manifest-tool github.com/estesp/manifest-tool"
+		go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool"
 
 binary:
-	go build -o manifest-tool github.com/estesp/manifest-tool
+	go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool
 
 build-container:
 	docker build ${DOCKER_BUILD_ARGS} -t "$(DOCKER_IMAGE)" .
