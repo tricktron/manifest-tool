@@ -8,15 +8,18 @@ import (
 	"github.com/docker/docker/cli/config"
 )
 
+// will be filled in at compile time
+var gitCommit = ""
+
 const (
-	version = "0.6.0"
+	version = "0.6.0-dev"
 	usage   = "inspect and push manifest list images to a registry"
 )
 
 func main() {
 	app := cli.NewApp()
 	app.Name = os.Args[0]
-	app.Version = version
+	app.Version = version + " (commit: " + gitCommit + ")"
 	app.Usage = usage
 	app.Flags = []cli.Flag{
 		cli.BoolFlag{
