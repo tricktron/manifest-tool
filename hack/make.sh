@@ -48,8 +48,6 @@ DEFAULT_BUNDLES=(
 	validate-lint
 	validate-vet
 	validate-git-marks
-
-	test-integration
 )
 
 TESTFLAGS+=" -test.timeout=10m"
