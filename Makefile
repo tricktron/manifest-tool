@@ -50,8 +50,5 @@ install:
 shell: build-container
 	$(DOCKER_RUN_DOCKER) bash
 
-test-integration: build-container
-	$(DOCKER_RUN_DOCKER) hack/make.sh test-integration
-
 validate: build-container
 	$(DOCKER_RUN_DOCKER) hack/make.sh validate-git-marks validate-gofmt validate-lint validate-vet
