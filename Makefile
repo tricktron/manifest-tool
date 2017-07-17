@@ -26,7 +26,7 @@ build:
 		go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool"
 
 binary:
-	go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool
+	go build -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool
 
 build-container:
 	docker build ${DOCKER_BUILD_ARGS} -t "$(DOCKER_IMAGE)" .
