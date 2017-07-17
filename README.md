@@ -206,6 +206,26 @@ $ cd manifest-tool && make binary
 
 Note that signed binary releases are available on the project's [GitHub releases page](https://github.com/estesp/manifest-tool/releases) for several CPU architectures for Linux as well as OSX/macOS.
 
+### Test a Registry for "Manifest List" Support
+
+If you operate or use a registry claiming conformance to the Docker distribution v2 API and v2.2 image
+specification you may want to confirm that this image registry supports the manifest list *media type*
+and the APIs used to create a manifest list.
+
+This GitHub repo now has a pre-configured test script which will use readily available multi-architecture
+content from DockerHub and tag, push, and then combine it into a manifest list against any image registry
+you point it to. See the [test-registry.sh script](https://github.com/estesp/manifest-tool/blob/master/integration/test-registry.sh) in this repo's **integration** directory
+for further details. A simple use of the script is
+shown below to test a private registry:
+```
+$ ./test-registry.sh r.myprivreg.com/somerepo
+```
+
+> **Note:** This script will expect login details
+> have already been provided to `docker login` and
+> will use those stored credentials for push and
+> API access to *somerepo* on *r.myprivreg.com*.
+
 ### License
 
 `manifest-tool` is licensed under the Apache Software License (ASL) 2.0
