@@ -13,7 +13,7 @@ Note that manifest-tool was initially started as a joint project with [Harshal P
 
 ### Sample Usage
 
-The two main capabilities of the tool are to 1) **inspect** manifests (all media types) within any registry supporting the Docker API and 2) to **push** manifest list objects to the same.
+The two main capabilities of this tool are to 1) **inspect** manifests (of all media types) within any registry supporting the Docker API and 2) to **push** manifest list objects to any registry which supports the Docker V2 API and the v2.2 image specification.
 
 > *Note:* For pushing to an authenticated registry like DockerHub, you will need a config generated via
 `docker login`:
@@ -21,12 +21,19 @@ The two main capabilities of the tool are to 1) **inspect** manifests (all media
 docker login
 <enter your credentials>
 ```
+> *Important:* Since 17.03, Docker for Mac stores credentials in the OSX/macOS keychain and not in `config.json`. This means for users of
+> `manifest-tool` on Mac, you will need to specify `--username` and `--password` instead of relying on `docker login` credentials. Note that special characters may
+> need escaping depending on your shell environment when provided via command line.
 
-> If you are pushing to a registry requiring authentication, you can provide the resulting docker
-> login configuration when pushing a manifest list:
+If you are pushing to a registry requiring authentication, credentials will be handled as follows:
+ - If the `--username` and `--password` flags are supplied, their contents will be used as the basic credentials for any actions requiring authentication.
+ - If `--username` and `--password` are **not** provided as command line flags, the default docker client config will be loaded (default location: `$HOME/.docker/config.json`) and credentials for the target registry will be queried if available.
+ - If your docker config file is not in the standard location, you can provide an alternate directory location via the `--docker-cfg` flag and the `config.json` file will be used from that alternate directory.
+
+The following example shows the use of `--docker-cfg` to provide an alternate directory location for `docker login`-generated credentials when pushing a manifest list:
 
 ```sh
-$ ./manifest-tool --docker-cfg '/home/myuser/.docker/' push from-spec /home/myuser/sample.yml
+$ ./manifest-tool --docker-cfg '/tmp/some-docker-config/' push from-spec /home/myuser/sample.yml
 ```
 
 #### Inspect
