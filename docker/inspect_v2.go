@@ -71,7 +71,7 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	var (
 		manifest    distribution.Manifest
 		tagOrDigest string // Used for logging/progress only
-		tagList     = []string{}
+		tagList     []string
 		imageList   = []types.ImageInspect{}
 	)
 
@@ -200,7 +200,7 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 	}
 
 	rootFS := image.NewRootFS()
-	configRaw, err := makeRawConfigFromV1Config([]byte(verifiedManifest.History[0].V1Compatibility), rootFS, history)
+	configRaw, _ := makeRawConfigFromV1Config([]byte(verifiedManifest.History[0].V1Compatibility), rootFS, history)
 
 	config, err := json.Marshal(configRaw)
 	if err != nil {
