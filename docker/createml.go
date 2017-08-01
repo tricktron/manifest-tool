@@ -81,7 +81,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
-			return "", 0, fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion.")
+			return "", 0, fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion")
 		}
 		// the non-manifest list case will always have exactly one manifest response
 		imgMfst := mfstData[0]
@@ -145,7 +145,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	if ignoreMissing && len(manifestList.Manifests) == 0 {
 		// we need to verify we at least have one valid entry in the list
 		// otherwise our manifest list will be totally empty
-		return "", 0, fmt.Errorf("all entries were skipped due to missing source image references; no manifest list to push.")
+		return "", 0, fmt.Errorf("all entries were skipped due to missing source image references; no manifest list to push")
 	}
 	// Set the schema version
 	manifestList.Versioned = manifestlist.SchemaVersion
