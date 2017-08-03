@@ -197,6 +197,15 @@ Two additional features worth noting in release 0.5.0 and above:
  1. You can now specify `--ignore-missing` and if any of the input images are not available, the tool will output a warning but will not terminate. This allows for "best case" creation of manifest lists based on available images at the time.
  2. Using the YAML input option, you can leave the platform specification empty and `manifest-tool` will auto-populate the platform definition by using the source image manifest OS/arch details. Note that this is potentially deficient for cases where the image was built in a cross-compiled fashion and the source image data is incorrect as it does not match the binary OS/arch content in the image layers.
 
+As of 0.6.0, one can also specify `tags:` as a list of additional tags to push to the registry against the manifest list object being pushed ([#32](https://github.com/estesp/manifest-tool/pull/32)):
+
+```yaml
+image: myprivreg:5000/someimage:1.0.0
+tags: ['1.0', '1', 'latest']
+manifests:
+  ...
+```
+
 ### Building
 
 The releases of `manifest-tool` are built using the latest Go version; currently 1.8.x. If you wish to build `manifest-tool` using a version prior to 1.6, you will need to export the variable `GO15VENDOREXPERIMENT` into your build environment.
