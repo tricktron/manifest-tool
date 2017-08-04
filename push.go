@@ -48,11 +48,11 @@ var pushCmd = cli.Command{
 					logrus.Fatalf(fmt.Sprintf("Can't unmarshal YAML file %q: %v", filePath, err))
 				}
 
-				digest, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
+				digest, l, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
 				if err != nil {
 					logrus.Fatal(err)
 				}
-				fmt.Printf("Digest: %s\n", digest)
+				fmt.Printf("Digest: %s %d\n", digest, l)
 			},
 		},
 		{
@@ -111,11 +111,11 @@ var pushCmd = cli.Command{
 					Manifests: srcImages,
 				}
 
-				digest, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
+				digest, l, err := docker.PutManifestList(a, yamlInput, ignoreMissing)
 				if err != nil {
 					logrus.Fatal(err)
 				}
-				fmt.Printf("Digest: %s\n", digest)
+				fmt.Printf("Digest: %s %d\n", digest, l)
 			},
 		},
 	},

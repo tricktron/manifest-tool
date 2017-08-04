@@ -41,7 +41,7 @@ type manifestPush struct {
 }
 
 // PutManifestList takes an authentication variable and a yaml spec struct and pushes an image list based on the spec
-func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing bool) (string, error) {
+func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing bool) (string, int, error) {
 	var (
 		manifestList      manifestlist.ManifestList
 		blobMountRequests []blobMount
@@ -51,15 +51,15 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	// process the final image name reference for the manifest list
 	targetRef, err := reference.ParseNamed(yamlInput.Image)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
+		return "", 0, fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
 	}
 	targetRepo, err := registry.ParseRepositoryInfo(targetRef)
 	if err != nil {
-		return "", fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
+		return "", 0, fmt.Errorf("Error parsing repository name for manifest list (%s): %v", yamlInput.Image, err)
 	}
 	targetEndpoint, repoName, err := setupRepo(targetRepo)
 	if err != nil {
-		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
+		return "", 0, fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
 
 	// Now create the manifest list payload by looking up the manifest schemas
@@ -74,14 +74,14 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 				logrus.Warnf("Couldn't find or access image reference %q. Skipping image.", img.Image)
 				continue
 			}
-			return "", fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
+			return "", 0, fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
 		if repoInfo.Hostname() != targetRepo.Hostname() {
-			return "", fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
+			return "", 0, fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
-			return "", fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion.")
+			return "", 0, fmt.Errorf("You specified a manifest list entry from a digest that points to a current manifest list. Manifest lists do not allow recursion")
 		}
 		// the non-manifest list case will always have exactly one manifest response
 		imgMfst := mfstData[0]
@@ -108,7 +108,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 
 		// validate os/arch input
 		if !isValidOSArch(img.Platform.OS, img.Platform.Architecture) {
-			return "", fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
+			return "", 0, fmt.Errorf("Manifest entry for image %s has unsupported os/arch combination: %s/%s", img.Image, img.Platform.OS, img.Platform.Architecture)
 		}
 
 		manifest := manifestlist.ManifestDescriptor{
@@ -119,7 +119,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 		manifest.MediaType = imgMfst.MediaType
 
 		if err != nil {
-			return "", fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
+			return "", 0, fmt.Errorf("Digest parse of image %q failed with error: %v", img.Image, err)
 		}
 		logrus.Infof("Image %q is digest %s; size: %d", img.Image, imgMfst.Digest, imgMfst.Size)
 
@@ -145,58 +145,59 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	if ignoreMissing && len(manifestList.Manifests) == 0 {
 		// we need to verify we at least have one valid entry in the list
 		// otherwise our manifest list will be totally empty
-		return "", fmt.Errorf("all entries were skipped due to missing source image references; no manifest list to push.")
+		return "", 0, fmt.Errorf("all entries were skipped due to missing source image references; no manifest list to push")
 	}
 	// Set the schema version
 	manifestList.Versioned = manifestlist.SchemaVersion
 
 	urlBuilder, err := v2.NewURLBuilderFromString(targetEndpoint.URL.String(), false)
 	if err != nil {
-		return "", fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
+		return "", 0, fmt.Errorf("Can't create URL builder from endpoint (%s): %v", targetEndpoint.URL.String(), err)
 	}
 	pushURL, err := createManifestURLFromRef(targetRef, urlBuilder)
 	if err != nil {
-		return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
+		return "", 0, fmt.Errorf("Error setting up repository endpoint and references for %q: %v", targetRef, err)
 	}
 	logrus.Debugf("Manifest list push url: %s", pushURL)
 
 	deserializedManifestList, err := manifestlist.FromDescriptors(manifestList.Manifests)
 	if err != nil {
-		return "", fmt.Errorf("Cannot deserialize manifest list: %v", err)
+		return "", 0, fmt.Errorf("Cannot deserialize manifest list: %v", err)
 	}
 	mediaType, p, err := deserializedManifestList.Payload()
 	logrus.Debugf("mediaType of manifestList: %s", mediaType)
 	if err != nil {
-		return "", fmt.Errorf("Cannot retrieve payload for HTTP PUT of manifest list: %v", err)
+		return "", 0, fmt.Errorf("Cannot retrieve payload for HTTP PUT of manifest list: %v", err)
 
 	}
+	manifestLen := len(p)
 	putRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(p))
 	if err != nil {
-		return "", fmt.Errorf("HTTP PUT request creation failed: %v", err)
+		return "", 0, fmt.Errorf("HTTP PUT request creation failed: %v", err)
 	}
 	putRequest.Header.Set("Content-Type", mediaType)
 
 	httpClient, err := getHTTPClient(a, targetRepo, targetEndpoint, repoName)
 	if err != nil {
-		return "", fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
+		return "", 0, fmt.Errorf("Failed to setup HTTP client to repository: %v", err)
 	}
 
 	// before we push the manifest list, if we have any blob mount requests, we need
 	// to ask the registry to mount those blobs in our target so they are available
 	// as references
 	if err := mountBlobs(httpClient, urlBuilder, targetRef, blobMountRequests); err != nil {
-		return "", fmt.Errorf("Couldn't mount blobs for cross-repository push: %v", err)
+		return "", 0, fmt.Errorf("Couldn't mount blobs for cross-repository push: %v", err)
 	}
 
 	// we also must push any manifests that are referenced in the manifest list into
 	// the target namespace
 	if err := pushReferences(httpClient, urlBuilder, targetRef, manifestRequests); err != nil {
-		return "", fmt.Errorf("Couldn't push manifests referenced in our manifest list: %v", err)
+		return "", 0, fmt.Errorf("Couldn't push manifests referenced in our manifest list: %v", err)
 	}
 
 	resp, err := httpClient.Do(putRequest)
 	if err != nil {
-		return "", fmt.Errorf("V2 registry PUT of manifest list failed: %v", err)
+		return "", 0, fmt.Errorf("V2 registry PUT of manifest list failed: %v", err)
 	}
 	defer resp.Body.Close()
 
@@ -205,11 +206,11 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 		dgstHeader := resp.Header.Get("Docker-Content-Digest")
 		dgst, err := digest.Parse(dgstHeader)
 		if err != nil {
-			return "", err
+			return "", 0, err
 		}
 		finalDigest = string(dgst)
 	} else {
-		return "", fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
+		return "", 0, fmt.Errorf("Registry push unsuccessful: response %d: %s", resp.StatusCode, resp.Status)
 	}
 	// if the YAML includes additional tags, push the added tag references. No other work
 	// should be required as we have already made sure all target blobs are cross-repo
@@ -217,21 +218,21 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	for _, tag := range yamlInput.Tags {
 		newRef, err := reference.WithTag(targetRef, tag)
 		if err != nil {
-			return "", fmt.Errorf("Error creating tagged reference for added tag %q: %v", tag, err)
+			return "", 0, fmt.Errorf("Error creating tagged reference for added tag %q: %v", tag, err)
 		}
 		pushURL, err := createManifestURLFromRef(newRef, urlBuilder)
 		if err != nil {
-			return "", fmt.Errorf("Error setting up repository endpoint and references for %q: %v", newRef, err)
+			return "", 0, fmt.Errorf("Error setting up repository endpoint and references for %q: %v", newRef, err)
 		}
 		logrus.Debugf("[extra tag %q] push url: %s", tag, pushURL)
 		putRequest, err := http.NewRequest("PUT", pushURL, bytes.NewReader(p))
 		if err != nil {
-			return "", fmt.Errorf("[extra tag %q] HTTP PUT request creation failed: %v", tag, err)
+			return "", 0, fmt.Errorf("[extra tag %q] HTTP PUT request creation failed: %v", tag, err)
 		}
 		putRequest.Header.Set("Content-Type", mediaType)
 		resp, err := httpClient.Do(putRequest)
 		if err != nil {
-			return "", fmt.Errorf("[extra tag %q] V2 registry PUT of manifest list failed: %v", tag, err)
+			return "", 0, fmt.Errorf("[extra tag %q] V2 registry PUT of manifest list failed: %v", tag, err)
 		}
 		defer resp.Body.Close()
 
@@ -239,16 +240,16 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 			dgstHeader := resp.Header.Get("Docker-Content-Digest")
 			dgst, err := digest.Parse(dgstHeader)
 			if err != nil {
-				return "", err
+				return "", 0, err
 			}
 			if string(dgst) != finalDigest {
 				logrus.Warnf("Extra tag %q push resulted in non-matching digest %s (should be %s", tag, string(dgst), finalDigest)
 			}
 		} else {
-			return "", fmt.Errorf("[extra tag %q] Registry push unsuccessful: response %d: %s", tag, resp.StatusCode, resp.Status)
+			return "", 0, fmt.Errorf("[extra tag %q] Registry push unsuccessful: response %d: %s", tag, resp.StatusCode, resp.Status)
 		}
 	}
-	return finalDigest, nil
+	return finalDigest, manifestLen, nil
 }
 
 func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoint registry.APIEndpoint, repoName string) (*http.Client, error) {
