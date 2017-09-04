@@ -23,7 +23,7 @@ all: build
 
 build:
 	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.7 /bin/bash -c "\
-		go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool"
+		go build -ldflags \"-X main.gitCommit=${COMMIT}\" -o manifest-tool github.com/estesp/manifest-tool"
 
 binary:
 	go build -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool
