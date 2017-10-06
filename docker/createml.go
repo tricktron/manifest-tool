@@ -6,10 +6,12 @@ import (
 	"net"
 	"net/http"
 	"net/url"
+	"strings"
 	"time"
 
 	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/manifest/manifestlist"
+	dreference "github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
@@ -316,7 +318,7 @@ func createManifestURLFromRef(targetRef reference.Named, urlBuilder *v2.URLBuild
 		}
 	}
 
-	manifestURL, err := urlBuilder.BuildManifestURL(targetRef)
+	manifestURL, err := buildManifestURL(urlBuilder, targetRef)
 	if err != nil {
 		return "", fmt.Errorf("Failed to build manifest URL from target reference: %v", err)
 	}
@@ -366,7 +368,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 		if err != nil {
 			return fmt.Errorf("Error creating manifest digest target for referenced manifest %q: %v", manifest.Name, err)
 		}
-		pushURL, err := urlBuilder.BuildManifestURL(targetRef)
+		pushURL, err := buildManifestURL(urlBuilder, targetRef)
 		if err != nil {
 			return fmt.Errorf("Error setting up manifest push URL for manifest references for %q: %v", manifest.Name, err)
 		}
@@ -406,7 +408,7 @@ func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref referenc
 
 	for _, blob := range blobsRequested {
 		// create URL request
-		url, err := urlBuilder.BuildBlobUploadURL(targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
+		url, err := buildBlobUploadURL(urlBuilder, targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
 		if err != nil {
 			return fmt.Errorf("Failed to create blob mount URL: %v", err)
 		}
@@ -427,6 +429,72 @@ func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref referenc
 		logrus.Debugf("Mount of blob %s succeeded, location: %q", blob.Digest, resp.Header.Get("Location"))
 	}
 	return nil
+}
+
+func buildManifestURL(ub *v2.URLBuilder, targetRef reference.Named) (string, error) {
+	if !isHubLibraryRef(targetRef) {
+		return ub.BuildManifestURL(targetRef)
+	}
+	// this is a library reference and we don't want to lose the "library/" part of the URL ref
+	baseURL, err := ub.BuildBaseURL()
+	if err != nil {
+		return "", err
+	}
+	tagOrDigest := ""
+	switch v := targetRef.(type) {
+	case dreference.Tagged:
+		tagOrDigest = v.Tag()
+	case dreference.Digested:
+		tagOrDigest = v.Digest().String()
+	}
+	baseURL = fmt.Sprintf("%s%s/%s/%s", baseURL, targetRef.RemoteName(), "manifests", tagOrDigest)
+	return baseURL, nil
+}
+
+func buildBlobUploadURL(ub *v2.URLBuilder, targetRef reference.Named, values url.Values) (string, error) {
+	if !isHubLibraryRef(targetRef) {
+		return ub.BuildBlobUploadURL(targetRef, values)
+	}
+	// this is a library reference and we don't want to lose the "library/" part of the URL ref
+	baseURL, err := ub.BuildBaseURL()
+	if err != nil {
+		return "", err
+	}
+	baseURL = fmt.Sprintf("%s%s/%s", baseURL, targetRef.RemoteName(), "blobs/uploads/")
+	return appendValues(baseURL, values), nil
+}
+
+func isHubLibraryRef(targetRef reference.Named) bool {
+	return strings.HasPrefix(targetRef.RemoteName(), reference.DefaultRepoPrefix) && targetRef.Hostname() == reference.DefaultHostname
+}
+
+// NOTE: these two functions are copied from github.com/docker/distribution/registry/api/v2/urls.go
+//       to handle the issue of needing to preserve non-normalized names for pushing to "library/" on
+//       DockerHub
+//
+// appendValuesURL appends the parameters to the url.
+func appendValuesURL(u *url.URL, values ...url.Values) *url.URL {
+	merged := u.Query()
+
+	for _, v := range values {
+		for k, vv := range v {
+			merged[k] = append(merged[k], vv...)
+		}
+	}
+	u.RawQuery = merged.Encode()
+	return u
+}
+
+// appendValues appends the parameters to the url. Panics if the string is not
+// a url.
+func appendValues(u string, values ...url.Values) string {
+	up, err := url.Parse(u)
+
+	if err != nil {
+		panic(err) // should never happen
+	}
+
+	return appendValuesURL(up, values...).String()
 }
 
 func statusSuccess(status int) bool {
