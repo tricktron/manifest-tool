@@ -177,7 +177,7 @@ With the above YAML definition, creating the manifest list with the tool would u
 $ ./manifest-tool push from-spec someimage.yaml
 ```
 
-In addition to the YAML file format, in recent versions the user of `manifest-tool` has the option to optionally use command line arguments to provide the specified images/tags and platform OS/architecture details. Instead of `from-spec` you can use `from-args` with the following format:
+In addition to the YAML file format, `manifest-tool` has the option to use command line arguments to provide the specified images/tags and platform OS/architecture details. Instead of `from-spec` you can use `from-args` with the following format:
 
 ```
 $ ./manifest-tool push from-args \
@@ -193,17 +193,26 @@ Specifically:
  - `--template` specifies the image repo:tag source for inputs by replacing the placeholders `OS` and `ARCH` with the inputs from `--platforms`.
  - `--target` specifies the target image repo:tag that will be the manifest list entry in the registry.
 
-Two additional features worth noting in release 0.5.0 and above:
- 1. You can now specify `--ignore-missing` and if any of the input images are not available, the tool will output a warning but will not terminate. This allows for "best case" creation of manifest lists based on available images at the time.
- 2. Using the YAML input option, you can leave the platform specification empty and `manifest-tool` will auto-populate the platform definition by using the source image manifest OS/arch details. Note that this is potentially deficient for cases where the image was built in a cross-compiled fashion and the source image data is incorrect as it does not match the binary OS/arch content in the image layers.
+##### Functional Changelog for Push/Create
 
-As of 0.6.0, one can also specify `tags:` as a list of additional tags to push to the registry against the manifest list object being pushed ([#32](https://github.com/estesp/manifest-tool/pull/32)):
+ - Release **v0.5.0**:
+  1. You can now specify `--ignore-missing` and if any of the input images are not available, the tool will output a warning but will not terminate. This allows for "best case" creation of manifest lists based on available images at the time.
+  2. Using the YAML input option, you can leave the platform specification empty and `manifest-tool` will auto-populate the platform definition by using the source image manifest OS/arch details. Note that this is potentially deficient for cases where the image was built in a cross-compiled fashion and the source image data is incorrect as it does not match the binary OS/arch content in the image layers.
+
+ - Release **v0.6.0**:
+  1. You can specify `tags:` as a list of additional tags to push to the registry against the target manifest list name being created ([#32](https://github.com/estesp/manifest-tool/pull/32)):
 
 ```yaml
 image: myprivreg:5000/someimage:1.0.0
 tags: ['1.0', '1', 'latest']
 manifests:
   ...
+```
+
+ - Release **v0.7.0**:
+  1. The output of `manifest-tool` was modified to add the size of the manifest list canonical JSON pushed to the registry. This allows manifest list content to be signed using 3rd party tools like `notary` which needs the size of the object to validate and sign the content. This is used by the [LinuxKit project](https://github.com/linuxkit/linuxkit) to create signed manifest lists of all of their container images. Example output at the end of a successful manifest list create is shown below. Note that the size field is appended to the digest hash in this version:
+```
+Digest: sha256:f316f43aceb7a920a7b6c0278c76694a84f608b72bd955db7c9e24927e7edcb3 2058
 ```
 
 ### Building
