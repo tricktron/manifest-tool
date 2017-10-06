@@ -1,4 +1,4 @@
-FROM golang:1.7
+FROM golang:1.9
 
 ENV GO_TOOLS_COMMIT 823804e1ae08dbb14eb807afc7db9993bc9e3cc3
 # Grab Go's cover tool for dead-simple code coverage testing
