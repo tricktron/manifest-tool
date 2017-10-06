@@ -208,7 +208,7 @@ manifests:
 
 ### Building
 
-The releases of `manifest-tool` are built using the latest Go version; currently 1.8.x. If you wish to build `manifest-tool` using a version prior to 1.6, you will need to export the variable `GO15VENDOREXPERIMENT` into your build environment.
+The releases of `manifest-tool` are built using the latest Go version; currently 1.9.1.
 
 To build `manifest-tool`, clone this repository into your `$GOPATH`:
 
@@ -219,6 +219,8 @@ $ cd github.com/estesp
 $ git clone https://github.com/estesp/manifest-tool
 $ cd manifest-tool && make binary
 ```
+
+If you do not have a local Golang environment, you can use the `make build` target to build `manifest-tool` in a Golang 1.9.1-based container environment. This will require that you have Docker installed. The `make static` target will build a statically-linked binary, and `make cross` is used to build all supported CPU architectures, creating static binaries for each platform.
 
 Note that signed binary releases are available on the project's [GitHub releases page](https://github.com/estesp/manifest-tool/releases) for several CPU architectures for Linux as well as OSX/macOS.
 

@@ -22,7 +22,7 @@ for PLATFORM in $PLATFORMS; do
   BIN_FILENAME="${BINARY}-${GOOS}-${GOARCH}"
   if [[ "${GOOS}" == "windows" ]]; then BIN_FILENAME="${BIN_FILENAME}.exe"; fi
   if [[ "${GOOS}" != "linux" ]]; then _LDFLAGS="${LDFLAGS_OTHER}"; fi
-  CMD="GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags \"${_LDFLAGS}\" -o ${BIN_FILENAME} ."
+  CMD="CGO_ENABLED=0 GO_EXTLINK_ENABLED=0 GOOS=${GOOS} GOARCH=${GOARCH} go build -ldflags \"${_LDFLAGS}\" -o ${BIN_FILENAME} -tags netgo -installsuffix netgo ."
   echo "${CMD}"
   eval $CMD || FAILURES="${FAILURES} ${PLATFORM}"
 done
