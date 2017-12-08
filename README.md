@@ -233,6 +233,45 @@ If you do not have a local Golang environment, you can use the `make build` targ
 
 Note that signed binary releases are available on the project's [GitHub releases page](https://github.com/estesp/manifest-tool/releases) for several CPU architectures for Linux as well as OSX/macOS.
 
+### Using manifest-tool Without Installation
+
+Interested in using `manifest-tool` for simple query operations? For example,
+maybe you only want to query if a specific image:tag combination is a manifest
+list entry or not, and if so, what platforms are listed in the manifest.
+
+You can consume this feature of `manifest-tool` without installing the binary
+as long as you are querying public (e.g. not private/authentication-requiring
+registries) images via another project, [mquery](https://github.com/estesp/mquery).
+
+You can use `mquery` via a multi-platform image currently located on DockerHub
+as **mplatform/mquery:latest**. For example, you can query the `mquery` image
+itself with the following command
+
+```sh
+$ docker run --rm mplatform/mquery mplatform/mquery
+Image: mplatform/mquery
+ * Manifest List: Yes
+ * Supported platforms:
+   - linux/amd64
+   - linux/arm/undefined
+   - linux/arm64/undefined
+   - linux/ppc64le
+   - linux/s390x
+   - windows/amd64:10.0.14393.1593
+```
+
+Note that the `undefined` reference in the output is due to the fact that
+the variant field isn't being filled out in the manifest list platform
+object for this image.
+
+The `mquery` program itself is a small Go program that queries functions
+running via [OpenWhisk](http://openwhisk.incubator.apache.org/) in [IBM Cloud Functions](https://console.bluemix.net/docs/openwhisk/index.html#getting-started-with-cloud-functions) public serverless offering. One
+of those functions is packaged as a Docker container image with
+`manifest-tool` installed. More information is available in the
+[mquery GitHub repo](https://github.com/estesp/mquery). You can read more
+of the background details in [my blog post about the Moby Summit EU talk](https://integratedcode.us/2017/11/21/moby-summit-serverless-openwhisk-multi-arch/)
+on this topic.
+
 ### Test a Registry for "Manifest List" Support
 
 If you operate or use a registry claiming conformance to the Docker distribution v2 API and v2.2 image
