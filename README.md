@@ -9,7 +9,12 @@ new **manifests list** object type in the Docker registry.
 Manifest lists are defined in the [v2.2 image specification](https://github.com/docker/distribution/blob/master/docs/spec/manifest-v2-2.md) and exist mainly
 for the purpose of supporting multi-architecture and/or multi-platform images within a Docker registry.
 
-Note that manifest-tool was initially started as a joint project with [Harshal Patil](https://github.com/harche) from IBM Bangalore, and originally forked from the registry client codebase, skopeo, by [Antonio Murdaca/runc0m](https://github.com/runcom), that became a part of [Project Atomic](https://github.com/projectatomic/skopeo) later in its lifetime. Thanks to both Antonio and Harshal for their initial work that made this possible! Also, note that work is ongoing to add these capabilities directly to the Docker client. Thanks to Christy Perez from IBM Systems for her hard work in pushing ahead with [a docker/cli PR](https://github.com/docker/cli/pull/138) which should someday make this tool obsolete!
+Note that manifest-tool was initially started as a joint project with [Harshal Patil](https://github.com/harche) from IBM Bangalore, and originally forked from the registry client codebase, skopeo, by [Antonio Murdaca/runc0m](https://github.com/runcom), that became a part of [Project Atomic](https://github.com/projectatomic/skopeo) later in its lifetime. Thanks to both Antonio and Harshal for their initial work that made this possible! Also, note that work is ongoing to add these capabilities directly to the Docker client. Thanks to Christy Perez from IBM Systems for her hard work in pushing ahead with [a docker/cli PR](https://github.com/docker/cli/pull/138) which should make this tool obsolete!
+
+> **UPDATE (Feb 2018):** The Docker client PR #138 is merged, providing a `docker manifest`
+> command that can replace the use of `manifest-tool` in most scenarios. Other
+> follow-on PRs are in process to add functionality to `docker manifest` to make
+> it completely functional for all multi-platform image use cases.
 
 ### Sample Usage
 
@@ -271,6 +276,15 @@ of those functions is packaged as a Docker container image with
 [mquery GitHub repo](https://github.com/estesp/mquery). You can read more
 of the background details in [my blog post about the Moby Summit EU talk](https://integratedcode.us/2017/11/21/moby-summit-serverless-openwhisk-multi-arch/)
 on this topic.
+
+### Known Supporting Registries
+
+Not every registry that claims Docker v2 image API and format support allows manifest lists to be pushed. The errors are not always clear; it could be blocking the blob mount API calls, or the push of the manifest list media type object. At this point, the good news is that the growth of interest in manifest list images has caused quite a few popular registries to add or fix Docker v2 API and image support for manifest lists. The following is a known list of publicly available Docker v2 conformant registries which have been tested with `manifest-tool` or `docker manifest`:
+
+ 1. [DockerHub](https://hub.docker.com): Has supported manifest lists since 2016.
+ 2. [Google Container Registry/gcr.io](https://cloud.google.com/container-registry/): gcr.io manifest list support was fixed in 4Q2017.
+ 3. [IBM Cloud Container Registry](https://www.ibm.com/cloud/container-registry): The IBM public cloud container registry supports manifest lists since the latter half of 2017.
+ 4. [Microsoft Azure Container Registry/azurecr.io](https://azure.microsoft.com/en-us/services/container-registry/): The Azure CR supports manifest lists.
 
 ### Test a Registry for "Manifest List" Support
 
