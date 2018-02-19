@@ -298,7 +298,7 @@ func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoin
 
 func createManifestURLFromRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
 	// get rid of hostname so the target URL is constructed properly
-	_, name := splitHostname(targetRef.String())
+	hostname, name := splitHostname(targetRef.String())
 	targetRef, err := reference.ParseNamed(name)
 	if err != nil {
 		return "", fmt.Errorf("Can't parse target image repository name from reference: %v", err)
@@ -318,7 +318,7 @@ func createManifestURLFromRef(targetRef reference.Named, urlBuilder *v2.URLBuild
 		}
 	}
 
-	manifestURL, err := buildManifestURL(urlBuilder, targetRef)
+	manifestURL, err := buildManifestURL(urlBuilder, hostname, targetRef)
 	if err != nil {
 		return "", fmt.Errorf("Failed to build manifest URL from target reference: %v", err)
 	}
@@ -354,7 +354,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 	// repo. This will allow us to push the manifest list properly later and have all valid references.
 
 	// first get rid of possible hostname so the target URL is constructed properly
-	_, name := splitHostname(ref.String())
+	hostname, name := splitHostname(ref.String())
 	ref, err := reference.ParseNamed(name)
 	if err != nil {
 		return fmt.Errorf("Error parsing repo/name portion of reference without hostname: %s: %v", name, err)
@@ -368,7 +368,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 		if err != nil {
 			return fmt.Errorf("Error creating manifest digest target for referenced manifest %q: %v", manifest.Name, err)
 		}
-		pushURL, err := buildManifestURL(urlBuilder, targetRef)
+		pushURL, err := buildManifestURL(urlBuilder, hostname, targetRef)
 		if err != nil {
 			return fmt.Errorf("Error setting up manifest push URL for manifest references for %q: %v", manifest.Name, err)
 		}
@@ -403,12 +403,12 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 
 func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, blobsRequested []blobMount) error {
 	// get rid of hostname so the target URL is constructed properly
-	_, name := splitHostname(ref.String())
+	hostname, name := splitHostname(ref.String())
 	targetRef, _ := reference.ParseNamed(name)
 
 	for _, blob := range blobsRequested {
 		// create URL request
-		url, err := buildBlobUploadURL(urlBuilder, targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
+		url, err := buildBlobUploadURL(urlBuilder, hostname, targetRef, url.Values{"from": {blob.FromRepo}, "mount": {blob.Digest}})
 		if err != nil {
 			return fmt.Errorf("Failed to create blob mount URL: %v", err)
 		}
@@ -431,8 +431,8 @@ func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref referenc
 	return nil
 }
 
-func buildManifestURL(ub *v2.URLBuilder, targetRef reference.Named) (string, error) {
-	if !isHubLibraryRef(targetRef) {
+func buildManifestURL(ub *v2.URLBuilder, hostname string, targetRef reference.Named) (string, error) {
+	if !isHubLibraryRef(targetRef, hostname) {
 		return ub.BuildManifestURL(targetRef)
 	}
 	// this is a library reference and we don't want to lose the "library/" part of the URL ref
@@ -451,8 +451,8 @@ func buildManifestURL(ub *v2.URLBuilder, targetRef reference.Named) (string, err
 	return baseURL, nil
 }
 
-func buildBlobUploadURL(ub *v2.URLBuilder, targetRef reference.Named, values url.Values) (string, error) {
-	if !isHubLibraryRef(targetRef) {
+func buildBlobUploadURL(ub *v2.URLBuilder, hostname string, targetRef reference.Named, values url.Values) (string, error) {
+	if !isHubLibraryRef(targetRef, hostname) {
 		return ub.BuildBlobUploadURL(targetRef, values)
 	}
 	// this is a library reference and we don't want to lose the "library/" part of the URL ref
@@ -464,8 +464,8 @@ func buildBlobUploadURL(ub *v2.URLBuilder, targetRef reference.Named, values url
 	return appendValues(baseURL, values), nil
 }
 
-func isHubLibraryRef(targetRef reference.Named) bool {
-	return strings.HasPrefix(targetRef.RemoteName(), reference.DefaultRepoPrefix) && targetRef.Hostname() == reference.DefaultHostname
+func isHubLibraryRef(targetRef reference.Named, hostname string) bool {
+	return strings.HasPrefix(targetRef.RemoteName(), reference.DefaultRepoPrefix) && hostname == reference.DefaultHostname
 }
 
 // NOTE: these two functions are copied from github.com/docker/distribution/registry/api/v2/urls.go
