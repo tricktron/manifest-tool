@@ -283,7 +283,7 @@ func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoin
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, passThruTokenHandler))
 	} else {
 		creds := dumbCredentialStore{auth: &authConfig}
-		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "*")
+		tokenHandler := auth.NewTokenHandler(authTransport, creds, repoName, "push", "pull")
 		basicHandler := auth.NewBasicHandler(creds)
 		modifiers = append(modifiers, auth.NewAuthorizer(challengeManager, tokenHandler, basicHandler))
 	}
