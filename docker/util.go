@@ -35,6 +35,7 @@ var validOSArch = map[string]bool{
 	"solaris/amd64":   true,
 	"windows/386":     true,
 	"windows/amd64":   true,
+	"windows/arm":     true,
 }
 
 func isValidOSArch(os string, arch string) bool {
