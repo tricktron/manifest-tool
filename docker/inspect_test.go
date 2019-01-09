@@ -8,14 +8,14 @@ func TestSplitHostname(t *testing.T) {
 	}{
 		{"localhost:5000/hello-world", "localhost:5000", "hello-world"},
 		{"myregistrydomain:5000/java", "myregistrydomain:5000", "java"},
-		{"docker.io/busybox", "docker.io", "busybox"},
+		{"docker.io/busybox", "docker.io", "library/busybox"},
 	}
 	var wrnghostnames = []struct {
 		d, e, f string
 	}{
 		{"localhost:5000,hello-world", "localhost:5000", "hello-world"},
 		{"myregistrydomain:5000&java", "myregistrydomain:5000", "java"},
-		{"docker.io@busybox", "docker.io", "busybox"},
+		{"docker.io%busybox", "docker.io", "busybox"},
 	}
 
 	for _, i := range crcthostnames {
@@ -27,8 +27,8 @@ func TestSplitHostname(t *testing.T) {
 
 	for _, j := range wrnghostnames {
 		res1, res2 := splitHostname(j.d)
-		if res1 == j.e || res2 == j.f {
-			t.Errorf("%s should not produce equals of: %q %q or %q %q", j.d, res1, j.e, res2, j.f)
+		if res1 == j.e && res2 == j.f {
+			t.Errorf("%s should not produce equals of: %q %q and %q %q", j.d, res1, j.e, res2, j.f)
 		}
 	}
 }

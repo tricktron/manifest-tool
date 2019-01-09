@@ -9,17 +9,15 @@ import (
 	"strings"
 	"time"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution/manifest/manifestlist"
-	dreference "github.com/docker/distribution/reference"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client/auth"
 	"github.com/docker/distribution/registry/client/transport"
-
 	"github.com/docker/docker/dockerversion"
-	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/opencontainers/go-digest"
+	"github.com/sirupsen/logrus"
 
 	"github.com/estesp/manifest-tool/types"
 )
@@ -51,7 +49,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	)
 
 	// process the final image name reference for the manifest list
-	targetRef, err := reference.ParseNamed(yamlInput.Image)
+	targetRef, err := reference.ParseNormalizedNamed(yamlInput.Image)
 	if err != nil {
 		return "", 0, fmt.Errorf("Error parsing name for manifest list (%s): %v", yamlInput.Image, err)
 	}
@@ -78,8 +76,8 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 			}
 			return "", 0, fmt.Errorf("Inspect of image %q failed with error: %v", img.Image, err)
 		}
-		if repoInfo.Hostname() != targetRepo.Hostname() {
-			return "", 0, fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", repoInfo.Hostname(), targetRepo.Hostname())
+		if reference.Domain(repoInfo.Name) != reference.Domain(targetRepo.Name) {
+			return "", 0, fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", reference.Domain(repoInfo.Name), reference.Domain(targetRepo.Name))
 		}
 		if len(mfstData) > 1 {
 			// too many responses--can only happen if a manifest list was returned for the name lookup
@@ -127,15 +125,15 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 
 		// if this image is in a different repo, we need to add the layer & config digests to the list of
 		// requested blob mounts (cross-repository push) before pushing the manifest list
-		if repoName != repoInfo.RemoteName() {
+		if repoName != reference.Path(repoInfo.Name) {
 			logrus.Debugf("Adding manifest references of %q to blob mount requests", img.Image)
 			for _, layer := range imgMfst.References {
-				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: repoInfo.RemoteName(), Digest: layer})
+				blobMountRequests = append(blobMountRequests, blobMount{FromRepo: reference.Path(repoInfo.Name), Digest: layer})
 			}
 			// also must add the manifest to be pushed in the target namespace
-			logrus.Debugf("Adding manifest %q -> to be pushed to %q as a manifest reference", repoInfo.RemoteName(), repoName)
+			logrus.Debugf("Adding manifest %q -> to be pushed to %q as a manifest reference", reference.Path(repoInfo.Name), repoName)
 			manifestRequests = append(manifestRequests, manifestPush{
-				Name:      repoInfo.RemoteName(),
+				Name:      reference.Path(repoInfo.Name),
 				Digest:    imgMfst.Digest,
 				JSONBytes: imgMfst.CanonicalJSON,
 				MediaType: imgMfst.MediaType,
@@ -272,7 +270,7 @@ func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoin
 	if err != nil {
 		return nil, fmt.Errorf("Cannot retrieve authconfig: %v", err)
 	}
-	modifiers := registry.DockerHeaders(dockerversion.DockerUserAgent(nil), http.Header{})
+	modifiers := registry.Headers(dockerversion.DockerUserAgent(nil), http.Header{})
 	authTransport := transport.NewTransport(base, modifiers...)
 	challengeManager, _, err := registry.PingV2Registry(endpoint.URL, authTransport)
 	if err != nil {
@@ -299,17 +297,14 @@ func getHTTPClient(a *types.AuthInfo, repoInfo *registry.RepositoryInfo, endpoin
 func createManifestURLFromRef(targetRef reference.Named, urlBuilder *v2.URLBuilder) (string, error) {
 	// get rid of hostname so the target URL is constructed properly
 	hostname, name := splitHostname(targetRef.String())
-	targetRef, err := reference.ParseNamed(name)
+	targetRef, err := getNamedRefWithoutHostname(name)
 	if err != nil {
 		return "", fmt.Errorf("Can't parse target image repository name from reference: %v", err)
 	}
 
 	// Set the tag to latest, if no tag found in YAML
 	if _, isTagged := targetRef.(reference.NamedTagged); !isTagged {
-		targetRef, err = reference.WithTag(targetRef, reference.DefaultTag)
-		if err != nil {
-			return "", fmt.Errorf("Error adding default tag to target repository name: %v", err)
-		}
+		targetRef = reference.TagNameOnly(targetRef)
 	} else {
 		tagged, _ := targetRef.(reference.NamedTagged)
 		targetRef, err = reference.WithTag(targetRef, tagged.Tag())
@@ -329,9 +324,12 @@ func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string,
 
 	options := registry.ServiceOptions{}
 	options.InsecureRegistries = append(options.InsecureRegistries, "0.0.0.0/0")
-	registryService := registry.NewService(options)
+	registryService, err := registry.NewService(options)
+	if err != nil {
+		return registry.APIEndpoint{}, "", err
+	}
 
-	endpoints, err := registryService.LookupPushEndpoints(repoInfo.Hostname())
+	endpoints, err := registryService.LookupPushEndpoints(reference.Domain(repoInfo.Name))
 	if err != nil {
 		return registry.APIEndpoint{}, "", err
 	}
@@ -339,10 +337,10 @@ func setupRepo(repoInfo *registry.RepositoryInfo) (registry.APIEndpoint, string,
 	// take highest priority endpoint
 	endpoint := endpoints[0]
 
-	repoName := repoInfo.FullName()
-	// If endpoint does not support CanonicalName, use the RemoteName instead
+	repoName := repoInfo.Name.Name()
+	// If endpoint does not support CanonicalName, use the Name's path instead
 	if endpoint.TrimHostname {
-		repoName = repoInfo.RemoteName()
+		repoName = reference.Path(repoInfo.Name)
 		logrus.Debugf("repoName: %v", repoName)
 	}
 	return endpoint, repoName, nil
@@ -355,7 +353,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 
 	// first get rid of possible hostname so the target URL is constructed properly
 	hostname, name := splitHostname(ref.String())
-	ref, err := reference.ParseNamed(name)
+	ref, err := getNamedRefWithoutHostname(name)
 	if err != nil {
 		return fmt.Errorf("Error parsing repo/name portion of reference without hostname: %s: %v", name, err)
 	}
@@ -404,7 +402,10 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 func mountBlobs(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref reference.Named, blobsRequested []blobMount) error {
 	// get rid of hostname so the target URL is constructed properly
 	hostname, name := splitHostname(ref.String())
-	targetRef, _ := reference.ParseNamed(name)
+	targetRef, err := getNamedRefWithoutHostname(name)
+	if err != nil {
+		return fmt.Errorf("Can't parse reference without hostname: %v", err)
+	}
 
 	for _, blob := range blobsRequested {
 		// create URL request
@@ -442,12 +443,12 @@ func buildManifestURL(ub *v2.URLBuilder, hostname string, targetRef reference.Na
 	}
 	tagOrDigest := ""
 	switch v := targetRef.(type) {
-	case dreference.Tagged:
+	case reference.Tagged:
 		tagOrDigest = v.Tag()
-	case dreference.Digested:
+	case reference.Digested:
 		tagOrDigest = v.Digest().String()
 	}
-	baseURL = fmt.Sprintf("%s%s/%s/%s", baseURL, targetRef.RemoteName(), "manifests", tagOrDigest)
+	baseURL = fmt.Sprintf("%s%s/%s/%s", baseURL, reference.Path(targetRef), "manifests", tagOrDigest)
 	return baseURL, nil
 }
 
@@ -460,12 +461,24 @@ func buildBlobUploadURL(ub *v2.URLBuilder, hostname string, targetRef reference.
 	if err != nil {
 		return "", err
 	}
-	baseURL = fmt.Sprintf("%s%s/%s", baseURL, targetRef.RemoteName(), "blobs/uploads/")
+	baseURL = fmt.Sprintf("%s%s/%s", baseURL, reference.Path(targetRef), "blobs/uploads/")
 	return appendValues(baseURL, values), nil
 }
 
 func isHubLibraryRef(targetRef reference.Named, hostname string) bool {
-	return strings.HasPrefix(targetRef.RemoteName(), reference.DefaultRepoPrefix) && hostname == reference.DefaultHostname
+	return strings.HasPrefix(reference.Path(targetRef), DefaultRepoPrefix) && hostname == DefaultHostname
+}
+
+func getNamedRefWithoutHostname(ref string) (reference.Named, error) {
+	targetRef, err := reference.Parse(ref)
+	if err != nil {
+		return nil, fmt.Errorf("Can't parse reference without hostname: %v", err)
+	}
+	named, isNamed := targetRef.(reference.Named)
+	if !isNamed {
+		return nil, fmt.Errorf("Parsed reference is not a Named object: %s", ref)
+	}
+	return named, nil
 }
 
 // NOTE: these two functions are copied from github.com/docker/distribution/registry/api/v2/urls.go
