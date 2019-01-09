@@ -1,10 +1,10 @@
 package memory
 
 import (
+	"context"
 	"sync"
 
 	"github.com/docker/distribution"
-	"github.com/docker/distribution/context"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/storage/cache"
 	"github.com/opencontainers/go-digest"
@@ -26,7 +26,7 @@ func NewInMemoryBlobDescriptorCacheProvider() cache.BlobDescriptorCacheProvider 
 }
 
 func (imbdcp *inMemoryBlobDescriptorCacheProvider) RepositoryScoped(repo string) (distribution.BlobDescriptorService, error) {
-	if _, err := reference.ParseNamed(repo); err != nil {
+	if _, err := reference.ParseNormalizedNamed(repo); err != nil {
 		return nil, err
 	}
 
