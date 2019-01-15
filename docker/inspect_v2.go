@@ -7,20 +7,20 @@ import (
 	"runtime"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/docker/distribution"
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/manifest/schema1"
 	"github.com/docker/distribution/manifest/schema2"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	engineTypes "github.com/docker/docker/api/types"
 	dockerdistribution "github.com/docker/docker/distribution"
 	"github.com/docker/docker/image"
 	"github.com/docker/docker/image/v1"
-	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/estesp/manifest-tool/types"
 	"github.com/opencontainers/go-digest"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -79,13 +79,7 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	if err != nil {
 		return nil, err
 	}
-
-	if _, isTagged := ref.(reference.NamedTagged); !isTagged {
-		ref, err = reference.WithTag(ref, reference.DefaultTag)
-		if err != nil {
-			return nil, err
-		}
-	}
+	ref = reference.TagNameOnly(ref)
 
 	if tagged, isTagged := ref.(reference.NamedTagged); isTagged {
 		// NOTE: not using TagService.Get, since it uses HEAD requests

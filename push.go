@@ -6,11 +6,11 @@ import (
 	"path/filepath"
 	"strings"
 
-	"github.com/Sirupsen/logrus"
 	"github.com/codegangsta/cli"
 	"github.com/estesp/manifest-tool/docker"
 	"github.com/estesp/manifest-tool/types"
 	"github.com/go-yaml/yaml"
+	"github.com/sirupsen/logrus"
 
 	"github.com/docker/distribution/manifest/manifestlist"
 )

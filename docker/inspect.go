@@ -10,9 +10,9 @@ import (
 	"syscall"
 	"time"
 
-	"github.com/Sirupsen/logrus"
+	"github.com/docker/cli/cli/config"
 	"github.com/docker/distribution/manifest/manifestlist"
-	distreference "github.com/docker/distribution/reference"
+	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
 	"github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
@@ -20,12 +20,11 @@ import (
 	engineTypes "github.com/docker/docker/api/types"
 	registryTypes "github.com/docker/docker/api/types/registry"
 	"github.com/docker/docker/api/types/versions"
-	"github.com/docker/docker/cli/config"
 	"github.com/docker/docker/distribution"
 	"github.com/docker/docker/image"
-	"github.com/docker/docker/reference"
 	"github.com/docker/docker/registry"
 	"github.com/estesp/manifest-tool/types"
+	"github.com/sirupsen/logrus"
 	"golang.org/x/net/context"
 )
 
@@ -88,7 +87,7 @@ type manifestFetcher interface {
 }
 
 func validateName(name string) error {
-	distref, err := distreference.ParseNamed(name)
+	distref, err := reference.ParseNormalizedNamed(name)
 	if err != nil {
 		return err
 	}
@@ -154,7 +153,7 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 	if err := validateName(name); err != nil {
 		return nil, nil, err
 	}
-	ref, err := reference.ParseNamed(name)
+	ref, err := reference.ParseNormalizedNamed(name)
 	if err != nil {
 		return nil, nil, err
 	}
@@ -166,15 +165,18 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 	if err != nil {
 		return nil, nil, err
 	}
-	if err := validateRepoName(repoInfo.Name()); err != nil {
+	if err := validateRepoName(repoInfo.Name.Name()); err != nil {
 		return nil, nil, err
 	}
 	options := registry.ServiceOptions{}
 	options.InsecureRegistries = append(options.InsecureRegistries, "0.0.0.0/0")
 	options.V2Only = true
-	registryService := registry.NewService(options)
+	registryService, err := registry.NewService(options)
+	if err != nil {
+		return nil, nil, err
+	}
 
-	endpoints, err := registryService.LookupPullEndpoints(repoInfo.Hostname())
+	endpoints, err := registryService.LookupPullEndpoints(reference.Domain(repoInfo.Name))
 	if err != nil {
 		return nil, nil, err
 	}
@@ -203,7 +205,7 @@ func GetImageData(a *types.AuthInfo, name string) ([]types.ImageInspect, *regist
 			}
 		}
 
-		logrus.Debugf("Trying to fetch image manifest of %s repository from %s %s", repoInfo.Name(), endpoint.URL, endpoint.Version)
+		logrus.Debugf("Trying to fetch image manifest of %s repository from %s %s", repoInfo.Name.Name(), endpoint.URL, endpoint.Version)
 
 		fetcher, err := newManifestFetcher(endpoint, repoInfo, authConfig, registryService)
 		if err != nil {
