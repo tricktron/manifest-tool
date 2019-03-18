@@ -193,6 +193,16 @@ func (mf *v2ManifestFetcher) pullSchema1(ctx context.Context, ref reference.Name
 		mfInfo.blobDigests = append(mfInfo.blobDigests, verifiedManifest.FSLayers[i].BlobSum)
 	}
 
+	seen := make(map[string]bool)
+	for i := 0; i < len(verifiedManifest.FSLayers); i++ {
+		digest := verifiedManifest.FSLayers[i].BlobSum.String()
+		if _, ok := seen[digest]; ok {
+			continue
+		}
+		seen[digest] = true
+		mfInfo.layers = append(mfInfo.layers, digest)
+	}
+
 	rootFS := image.NewRootFS()
 	configRaw, _ := makeRawConfigFromV1Config([]byte(verifiedManifest.History[0].V1Compatibility), rootFS, history)
 
