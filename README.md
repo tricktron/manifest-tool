@@ -222,7 +222,7 @@ Digest: sha256:f316f43aceb7a920a7b6c0278c76694a84f608b72bd955db7c9e24927e7edcb3 
 
 ### Building
 
-The releases of `manifest-tool` are built using the latest Go version; currently 1.9.1.
+The releases of `manifest-tool` are built using the latest Go version; currently 1.12.x.
 
 To build `manifest-tool`, clone this repository into your `$GOPATH`:
 
