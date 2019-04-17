@@ -339,17 +339,16 @@ func setupRepo(repoInfo *registry.RepositoryInfo, insecure bool) (registry.APIEn
 	logrus.Debugf("endpoints: %v", endpoints)
 	// take highest priority endpoint
 	endpoint := endpoints[0]
-	if !repoInfo.Index.Secure {
+	// if insecure, and there is an "http" endpoint, prefer that
+	if insecure {
 		for _, ep := range endpoints {
 			if ep.URL.Scheme == "http" {
 				endpoint = ep
 			}
 		}
-	}
-
-	if insecure {
 		endpoint.TLSConfig.InsecureSkipVerify = true
 	}
+
 	repoName := repoInfo.Name.Name()
 	// If endpoint does not support CanonicalName, use the Name's path instead
 	if endpoint.TrimHostname {

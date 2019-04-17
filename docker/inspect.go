@@ -199,7 +199,7 @@ func GetImageData(a *types.AuthInfo, name string, insecure bool) ([]types.ImageI
 			logrus.Debugf("Skipping v1 endpoint %s; manifest list requires v2", endpoint.URL)
 			continue
 		}
-		if !repoInfo.Index.Secure && endpoint.URL.Scheme == "https" {
+		if insecure && endpoint.URL.Scheme == "https" {
 			logrus.Debugf("Skipping https endpoint for insecure registry")
 			continue
 		}
