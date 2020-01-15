@@ -24,6 +24,7 @@ script:
     - docker build --build-arg PLATFORM=linux-amd64 -t mplatform/manifest-tool:linux-amd64 -f hack/Dockerfile.linux .
     - docker build --build-arg PLATFORM=linux-arm -t mplatform/manifest-tool:linux-arm -f hack/Dockerfile.linux .
     - docker build --build-arg PLATFORM=linux-arm64 -t mplatform/manifest-tool:linux-arm64 -f hack/Dockerfile.linux .
+    - docker build --build-arg PLATFORM=linux-mips64le -t mplatform/manifest-tool:linux-mips64le -f hack/Dockerfile.linux .
     - docker build --build-arg PLATFORM=linux-ppc64le -t mplatform/manifest-tool:linux-ppc64le -f hack/Dockerfile.linux .
     - docker build --build-arg PLATFORM=linux-s390x -t mplatform/manifest-tool:linux-s390x -f hack/Dockerfile.linux .
 
@@ -38,12 +39,14 @@ script:
         docker tag mplatform/manifest-tool:linux-amd64 mplatform/manifest-tool:${TRAVIS_TAG}-linux-amd64
         docker tag mplatform/manifest-tool:linux-arm mplatform/manifest-tool:${TRAVIS_TAG}-linux-arm
         docker tag mplatform/manifest-tool:linux-arm64 mplatform/manifest-tool:${TRAVIS_TAG}-linux-arm64
+        docker tag mplatform/manifest-tool:linux-mips64le mplatform/manifest-tool:${TRAVIS_TAG}-linux-mips64le
         docker tag mplatform/manifest-tool:linux-ppc64le mplatform/manifest-tool:${TRAVIS_TAG}-linux-ppc64le
         docker tag mplatform/manifest-tool:linux-s390x mplatform/manifest-tool:${TRAVIS_TAG}-linux-s390x
         # push version for each platform
         docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-amd64
         docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-arm
         docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-arm64
+        docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-mips64le
         docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-ppc64le
         docker push mplatform/manifest-tool:${TRAVIS_TAG}-linux-s390x
 
