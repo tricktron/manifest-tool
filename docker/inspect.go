@@ -14,7 +14,7 @@ import (
 	"github.com/docker/distribution/manifest/manifestlist"
 	"github.com/docker/distribution/reference"
 	"github.com/docker/distribution/registry/api/errcode"
-	"github.com/docker/distribution/registry/api/v2"
+	v2 "github.com/docker/distribution/registry/api/v2"
 	"github.com/docker/distribution/registry/client"
 	"github.com/docker/docker/api"
 	engineTypes "github.com/docker/docker/api/types"
@@ -172,7 +172,6 @@ func GetImageData(a *types.AuthInfo, name string, insecure bool) ([]types.ImageI
 	if insecure {
 		options.InsecureRegistries = append(options.InsecureRegistries, reference.Domain(repoInfo.Name))
 	}
-	options.V2Only = true
 	registryService, err := registry.NewService(options)
 	if err != nil {
 		return nil, nil, err
