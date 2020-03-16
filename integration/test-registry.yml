@@ -20,4 +20,4 @@ manifests:
     platform: 
       architecture: arm64
       os: linux
-      variant: armv8
+      variant: v8
