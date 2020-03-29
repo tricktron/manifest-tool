@@ -29,6 +29,7 @@ type v2ManifestFetcher struct {
 	repoInfo    *registry.RepositoryInfo
 	repo        distribution.Repository
 	confirmedV2 bool
+	includeTags bool
 	authConfig  engineTypes.AuthConfig
 	service     registry.Service
 }
@@ -108,14 +109,16 @@ func (mf *v2ManifestFetcher) fetchWithRepository(ctx context.Context, ref refere
 	// the other side speaks the v2 protocol.
 	mf.confirmedV2 = true
 
-	tagList, err = mf.repo.Tags(ctx).All(ctx)
-	if err != nil {
-		// If this repository doesn't exist on V2, we should
-		// permit a fallback to V1.
-		if !strings.Contains(err.Error(), "unauthorized") {
-			// only error out if the the "list all tags" endpoint isn't blocked by the registry
-			// some registries may have a reason to not allow complete tag list queries
-			return nil, allowV1Fallback(err)
+	if mf.includeTags {
+		tagList, err = mf.repo.Tags(ctx).All(ctx)
+		if err != nil {
+			// If this repository doesn't exist on V2, we should
+			// permit a fallback to V1.
+			if !strings.Contains(err.Error(), "unauthorized") {
+				// only error out if the the "list all tags" endpoint isn't blocked by the registry
+				// some registries may have a reason to not allow complete tag list queries
+				return nil, allowV1Fallback(err)
+			}
 		}
 	}
 

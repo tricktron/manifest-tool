@@ -18,12 +18,16 @@ var inspectCmd = cli.Command{
 			Name:  "raw",
 			Usage: "raw JSON output",
 		},
+		cli.BoolTFlag{
+			Name:  "tags",
+			Usage: "include RepoTags in raw response",
+		},
 	},
 	Action: func(c *cli.Context) {
 
 		name := c.Args().First()
 		a := getAuthInfo(c)
-		imgInspect, _, err := docker.GetImageData(a, name, c.GlobalBool("insecure"))
+		imgInspect, _, err := docker.GetImageData(a, name, c.GlobalBool("insecure"), c.Bool("raw") && c.Bool("tags"))
 		if err != nil {
 			logrus.Fatal(err)
 		}
