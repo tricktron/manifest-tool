@@ -66,7 +66,7 @@ func PutManifestList(a *types.AuthInfo, yamlInput types.YAMLInput, ignoreMissing
 	// for the constituent images:
 	logrus.Info("Retrieving digests of images...")
 	for _, img := range yamlInput.Manifests {
-		mfstData, repoInfo, err := GetImageData(a, img.Image, insecure)
+		mfstData, repoInfo, err := GetImageData(a, img.Image, insecure, false)
 		if err != nil {
 			// if ignoreMissing is true, we will skip this error and simply
 			// log a warning that we couldn't find it in the registry

@@ -149,7 +149,7 @@ func checkHTTPRedirect(req *http.Request, via []*http.Request) error {
 }
 
 // GetImageData takes registry authentication information and a name of the image to return information about
-func GetImageData(a *types.AuthInfo, name string, insecure bool) ([]types.ImageInspect, *registry.RepositoryInfo, error) {
+func GetImageData(a *types.AuthInfo, name string, insecure, includeTags bool) ([]types.ImageInspect, *registry.RepositoryInfo, error) {
 	if err := validateName(name); err != nil {
 		return nil, nil, err
 	}
@@ -215,7 +215,7 @@ func GetImageData(a *types.AuthInfo, name string, insecure bool) ([]types.ImageI
 
 		logrus.Debugf("Trying to fetch image manifest of %s repository from %s %s", repoInfo.Name.Name(), endpoint.URL, endpoint.Version)
 
-		fetcher, err := newManifestFetcher(endpoint, repoInfo, authConfig, registryService)
+		fetcher, err := newManifestFetcher(endpoint, repoInfo, authConfig, registryService, includeTags)
 		if err != nil {
 			lastErr = err
 			continue
@@ -263,14 +263,15 @@ func GetImageData(a *types.AuthInfo, name string, insecure bool) ([]types.ImageI
 	return nil, nil, lastErr
 }
 
-func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, authConfig engineTypes.AuthConfig, registryService registry.Service) (manifestFetcher, error) {
+func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.RepositoryInfo, authConfig engineTypes.AuthConfig, registryService registry.Service, includeTags bool) (manifestFetcher, error) {
 	switch endpoint.Version {
 	case registry.APIVersion2:
 		return &v2ManifestFetcher{
-			endpoint:   endpoint,
-			authConfig: authConfig,
-			service:    registryService,
-			repoInfo:   repoInfo,
+			endpoint:    endpoint,
+			authConfig:  authConfig,
+			service:     registryService,
+			repoInfo:    repoInfo,
+			includeTags: includeTags,
 		}, nil
 	case registry.APIVersion1:
 		return &v1ManifestFetcher{
