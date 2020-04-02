@@ -12,7 +12,7 @@ import (
 var gitCommit = ""
 
 const (
-	version = "1.0.1"
+	version = "1.0.2"
 	usage   = "inspect and push manifest list images to a registry"
 )
 
