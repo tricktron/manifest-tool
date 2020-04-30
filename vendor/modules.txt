@@ -61,6 +61,8 @@ github.com/docker/cli/cli/config/types
 ## explicit
 github.com/docker/distribution
 github.com/docker/distribution/digestset
+github.com/docker/distribution/manifest
+github.com/docker/distribution/manifest/manifestlist
 github.com/docker/distribution/metrics
 github.com/docker/distribution/reference
 github.com/docker/distribution/registry/api/errcode
@@ -111,7 +113,6 @@ github.com/docker/go-connections/tlsconfig
 ## explicit
 github.com/docker/go-metrics
 # github.com/docker/go-units v0.4.0
-## explicit
 github.com/docker/go-units
 # github.com/gogo/protobuf v1.3.1
 github.com/gogo/protobuf/gogoproto
@@ -183,8 +184,6 @@ golang.org/x/sync/semaphore
 # golang.org/x/sys v0.0.0-20190916202348-b4ddaad3f8a3
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# golang.org/x/time v0.0.0-20190308202827-9d24e82272b4
-## explicit
 # google.golang.org/genproto v0.0.0-20190819201941-24fa4b261c55
 google.golang.org/genproto/googleapis/rpc/status
 # google.golang.org/grpc v1.27.0
@@ -197,5 +196,7 @@ google.golang.org/grpc/status
 ## explicit
 gopkg.in/yaml.v2
 # gotest.tools/v3 v3.0.3
+## explicit
+# rsc.io/letsencrypt v0.0.3
 ## explicit
 # github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
