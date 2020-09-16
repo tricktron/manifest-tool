@@ -24,7 +24,7 @@ func Push(m types.ManifestList, addedTags []string, ms *store.MemoryStore) (stri
 	baseRef := reference.TrimNamed(m.Reference)
 	for _, man := range m.Manifests {
 		if man.PushRef {
-			ref, err := reference.Parse(baseRef.String() + "@" + man.Descriptor.Digest.String())
+			ref, err := reference.WithDigest(baseRef, man.Descriptor.Digest)
 			if err != nil {
 				return "", 0, errors.Wrapf(err, "Error parsing reference for target manifest component push: %s", m.Reference.String())
 			}
