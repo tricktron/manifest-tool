@@ -374,7 +374,7 @@ func pushReferences(httpClient *http.Client, urlBuilder *v2.URLBuilder, ref refe
 		if err != nil {
 			return fmt.Errorf("Error parsing manifest digest (%s) for referenced manifest %q: %v", manifest.Digest, manifest.Name, err)
 		}
-		targetRef, err := reference.WithDigest(ref, dgst)
+		targetRef, err := reference.WithDigest(reference.TrimNamed(ref), dgst)
 		if err != nil {
 			return fmt.Errorf("Error creating manifest digest target for referenced manifest %q: %v", manifest.Name, err)
 		}
