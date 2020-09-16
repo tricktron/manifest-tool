@@ -27,11 +27,6 @@ func Fetch(ctx context.Context, cs *store.MemoryStore, req *types.Request) (ocis
 	if err != nil {
 		return ocispec.Descriptor{}, err
 	}
-	r, err := fetcher.Fetch(ctx, desc)
-	if err != nil {
-		return ocispec.Descriptor{}, err
-	}
-	defer r.Close()
 
 	appendDistSrcLabelHandler, err := docker.AppendDistributionSourceLabel(cs, req.Reference().String())
 	if err != nil {
