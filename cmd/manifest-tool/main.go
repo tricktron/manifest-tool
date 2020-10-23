@@ -8,15 +8,23 @@ import (
 	"github.com/urfave/cli"
 )
 
-// will be filled in at compile time
+// filled in at compile time
 var gitCommit = ""
 
 const (
-	version = "1.0.3"
-	usage   = "inspect and push manifest list images to a registry"
+	version = "1.9.9-dev"
+	usage   = "registry client to inspect and push multi-platform OCI & Docker v2 images"
 )
 
 func main() {
+	if err := runApplication(); err != nil {
+		logrus.Errorf("manifest-tool failed with error: %v", err)
+		os.Exit(1)
+	}
+	os.Exit(0)
+}
+
+func runApplication() error {
 	app := cli.NewApp()
 	app.Name = os.Args[0]
 	app.Version = version + " (commit: " + gitCommit + ")"
@@ -60,7 +68,5 @@ func main() {
 		pushCmd,
 	}
 
-	if err := app.Run(os.Args); err != nil {
-		logrus.Fatal(err)
-	}
+	return app.Run(os.Args)
 }

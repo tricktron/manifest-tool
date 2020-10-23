@@ -17,7 +17,14 @@ import (
 
 var pushCmd = cli.Command{
 	Name:  "push",
-	Usage: "push a manifest list entry to a registry with provided image details",
+	Usage: "push a manifest list/OCI index entry to a registry with provided image details",
+	Flags: []cli.Flag{
+		cli.StringFlag{
+			Name:  "type",
+			Value: "docker",
+			Usage: "image manifest type: docker (manifest list) or oci (index)",
+		},
+	},
 	Subcommands: []cli.Command{
 		{
 			Name:  "from-spec",
