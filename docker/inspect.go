@@ -285,27 +285,24 @@ func newManifestFetcher(endpoint registry.APIEndpoint, repoInfo *registry.Reposi
 }
 
 func getAuthConfig(a *types.AuthInfo, index *registryTypes.IndexInfo) (engineTypes.AuthConfig, error) {
-
-	var (
-		username      = a.Username
-		password      = a.Password
-		cfg           = a.DockerCfg
-		defAuthConfig = engineTypes.AuthConfig{
+	if a.Username != "" && a.Password != "" {
+		return engineTypes.AuthConfig{
 			Username: a.Username,
 			Password: a.Password,
 			Email:    "stub@example.com",
-		}
-	)
-
-	if username != "" && password != "" {
-		return defAuthConfig, nil
+		}, nil
 	}
 
-	confFile, err := config.Load(cfg)
+	confFile, err := config.Load(a.DockerCfg)
 	if err != nil {
 		return engineTypes.AuthConfig{}, err
 	}
-	authConfig := registry.ResolveAuthConfig(confFile.AuthConfigs, index)
+
+	authConfig, err := confFile.GetAuthConfig(index.Name)
+	if err != nil {
+		return engineTypes.AuthConfig{}, err
+	}
+
 	logrus.Debugf("authConfig for %s: %v", index.Name, authConfig.Username)
 
 	return authConfig, nil
