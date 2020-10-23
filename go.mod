@@ -10,7 +10,6 @@ require (
 	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/docker/go-connections v0.4.1-0.20190612165340-fd1b1942c4d5 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
-	github.com/docker/go-units v0.4.0 // indirect
 	github.com/gorilla/mux v1.7.4-0.20190830121156-884b5ffcbd3a // indirect
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
@@ -19,9 +18,9 @@ require (
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/cli v1.21.0
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
-	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	gotest.tools/v3 v3.0.3 // indirect
+	rsc.io/letsencrypt v0.0.3 // indirect
 )
 
 replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
