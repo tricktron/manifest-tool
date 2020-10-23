@@ -92,10 +92,10 @@ func splitHostname(name string) (hostname, remoteName string) {
 	return
 }
 
-func newResolver(username, password string, insecure bool, configs ...string) remotes.Resolver {
+func newResolver(username, password string, insecure, plainHTTP bool, configs ...string) remotes.Resolver {
 
 	opts := docker.ResolverOptions{
-		PlainHTTP: false,
+		PlainHTTP: plainHTTP,
 	}
 	client := http.DefaultClient
 	if insecure {

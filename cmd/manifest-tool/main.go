@@ -36,7 +36,11 @@ func runApplication() error {
 		},
 		cli.BoolFlag{
 			Name:  "insecure",
-			Usage: "allow http/insecure registry communication",
+			Usage: "allow insecure registry communication",
+		},
+		cli.BoolFlag{
+			Name:  "plain-http",
+			Usage: "allow registry communication over plain http",
 		},
 		cli.StringFlag{
 			Name:  "username",

@@ -135,7 +135,7 @@ func pushManifestList(c *cli.Context, input types.YAMLInput, ignoreMissing, inse
 	}
 
 	resolver := newResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
-		filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
+		c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
 
 	imageType := types.Docker
 	if c.GlobalString("type") == "oci" {

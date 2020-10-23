@@ -132,6 +132,6 @@ func allMediaTypes() []string {
 
 func fetchDescriptor(c *cli.Context, memoryStore *store.MemoryStore, imageRef reference.Named) (ocispec.Descriptor, error) {
 	resolver := newResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
-		filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
+		c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
 	return registry.Fetch(context.Background(), memoryStore, types.NewRequest(imageRef, "", allMediaTypes(), resolver))
 }
