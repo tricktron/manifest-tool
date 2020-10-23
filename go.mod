@@ -3,12 +3,11 @@ module github.com/estesp/manifest-tool
 go 1.15
 
 require (
-	github.com/Microsoft/go-winio v0.4.14 // indirect
-	github.com/containerd/containerd v1.3.0-rc.0
-	github.com/deislabs/oras v0.7.0
+	github.com/containerd/containerd v1.3.7
+	github.com/deislabs/oras v0.8.1
 	github.com/docker/cli v20.10.0-beta1+incompatible // indirect
 	github.com/docker/distribution v2.7.1-0.20190205005809-0d3efadf0154+incompatible
-	github.com/docker/docker v0.0.0-00010101000000-000000000000
+	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/docker/go-connections v0.4.1-0.20190612165340-fd1b1942c4d5 // indirect
 	github.com/docker/go-metrics v0.0.1 // indirect
 	github.com/docker/go-units v0.4.0 // indirect
@@ -16,11 +15,9 @@ require (
 	github.com/opencontainers/go-digest v1.0.0-rc1
 	github.com/opencontainers/image-spec v1.0.1
 	github.com/opencontainers/runc v1.0.0-rc6.0.20181203215513-96ec2177ae84 // indirect
-	github.com/pkg/errors v0.8.2-0.20190227000051-27936f6d90f9 // indirect
 	github.com/sirupsen/logrus v1.4.2
 	github.com/urfave/cli v1.21.0
 	golang.org/x/net v0.0.0-20190827160401-ba9fcec4b297 // indirect
-	golang.org/x/sys v0.0.0-20190904154756-749cb33beabd // indirect
 	golang.org/x/time v0.0.0-20190308202827-9d24e82272b4 // indirect
 	gopkg.in/yaml.v2 v2.2.2
 	gotest.tools/v3 v3.0.3 // indirect
