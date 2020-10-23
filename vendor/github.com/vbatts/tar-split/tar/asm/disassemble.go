@@ -2,6 +2,7 @@ package asm
 
 import (
 	"io"
+	"io/ioutil"
 
 	"github.com/vbatts/tar-split/archive/tar"
 	"github.com/vbatts/tar-split/tar/storage"
@@ -118,34 +119,20 @@ func NewInputTarStream(r io.Reader, p storage.Packer, fp storage.FilePutter) (io
 			}
 		}
 
-		// It is allowable, and not uncommon that there is further padding on
-		// the end of an archive, apart from the expected 1024 null bytes. We
-		// do this in chunks rather than in one go to avoid cases where a
-		// maliciously crafted tar file tries to trick us into reading many GBs
-		// into memory.
-		const paddingChunkSize = 1024 * 1024
-		var paddingChunk [paddingChunkSize]byte
-		for {
-			var isEOF bool
-			n, err := outputRdr.Read(paddingChunk[:])
-			if err != nil {
-				if err != io.EOF {
-					pW.CloseWithError(err)
-					return
-				}
-				isEOF = true
-			}
-			_, err = p.AddEntry(storage.Entry{
-				Type:    storage.SegmentType,
-				Payload: paddingChunk[:n],
-			})
-			if err != nil {
-				pW.CloseWithError(err)
-				return
-			}
-			if isEOF {
-				break
-			}
+		// it is allowable, and not uncommon that there is further padding on the
+		// end of an archive, apart from the expected 1024 null bytes.
+		remainder, err := ioutil.ReadAll(outputRdr)
+		if err != nil && err != io.EOF {
+			pW.CloseWithError(err)
+			return
+		}
+		_, err = p.AddEntry(storage.Entry{
+			Type:    storage.SegmentType,
+			Payload: remainder,
+		})
+		if err != nil {
+			pW.CloseWithError(err)
+			return
 		}
 		pW.Close()
 	}()

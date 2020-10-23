@@ -144,17 +144,11 @@ loop:
 			}
 		case '"':
 			if !singleQuoted && !dollarQuote {
-				if doubleQuoted && buf == "" {
-					got = true
-				}
 				doubleQuoted = !doubleQuoted
 				continue
 			}
 		case '\'':
 			if !doubleQuoted && !dollarQuote {
-				if singleQuoted && buf == "" {
-					got = true
-				}
 				singleQuoted = !singleQuoted
 				continue
 			}

@@ -3,9 +3,9 @@ package main
 import (
 	"os"
 
-	"github.com/codegangsta/cli"
 	"github.com/docker/docker/cli/config"
 	"github.com/sirupsen/logrus"
+	"github.com/urfave/cli"
 )
 
 // will be filled in at compile time
