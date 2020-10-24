@@ -191,7 +191,9 @@ func pushManifestList(c *cli.Context, input types.YAMLInput, ignoreMissing, inse
 		info, _ := memoryStore.Info(context.TODO(), descriptor.Digest)
 		for _, layer := range man.Layers {
 			info.Digest = layer.Digest
-			memoryStore.Update(context.TODO(), info, "")
+			if _, err := memoryStore.Update(context.TODO(), info, ""); err != nil {
+				logrus.Warnf("couldn't update in-memory store labels for %v: %v", info.Digest, err)
+			}
 		}
 
 		// finalize the platform object that will be used to push with this manifest

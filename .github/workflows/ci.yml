@@ -82,7 +82,7 @@ jobs:
           else
             DCO_RANGE=$(curl ${GITHUB_COMMIT_URL} | jq -r '.[0].parents[0].sha +".."+ .[-1].sha')
           fi
-          GIT_CHECK_EXCLUDE="./vendor" git-validation ${verbosity} ${range} -run DCO,short-subject,dangling-whitespace
+          GIT_CHECK_EXCLUDE="./vendor" git-validation "${DCO_RANGE}" -run DCO,short-subject,dangling-whitespace
 
       - name: Vendor
         working-directory: src/github.com/estesp/manifest-tool
@@ -120,4 +120,3 @@ jobs:
         run: |
           make binary
         working-directory: src/github.com/estesp/manifest-tool
-
