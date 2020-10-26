@@ -117,7 +117,7 @@ func newResolver(username, password string, insecure, plainHTTP bool, configs ..
 	if err != nil {
 		logrus.Warnf("Error loading auth file: %v", err)
 	}
-	resolver, err := cli.Resolver(context.Background(), client, false)
+	resolver, err := cli.Resolver(context.Background(), client, plainHTTP)
 	if err != nil {
 		logrus.Warnf("Error loading resolver: %v", err)
 		resolver = docker.NewResolver(opts)
