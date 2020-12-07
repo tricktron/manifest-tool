@@ -27,7 +27,7 @@ github.com/Microsoft/hcsshim/osversion
 github.com/beorn7/perks/quantile
 # github.com/containerd/cgroups v0.0.0-20190919134610-bf292b21730f
 github.com/containerd/cgroups/stats/v1
-# github.com/containerd/containerd v1.3.7
+# github.com/containerd/containerd v1.4.3
 ## explicit
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/content
@@ -144,7 +144,6 @@ github.com/opencontainers/image-spec/specs-go
 github.com/opencontainers/image-spec/specs-go/v1
 # github.com/opencontainers/runc v1.0.0-rc6.0.20181203215513-96ec2177ae84
 ## explicit
-github.com/opencontainers/runc/libcontainer/system
 github.com/opencontainers/runc/libcontainer/user
 # github.com/pkg/errors v0.9.1
 ## explicit
