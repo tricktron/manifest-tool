@@ -1,4 +1,4 @@
-package main
+package util
 
 import "testing"
 
@@ -51,14 +51,14 @@ func TestValidOSArch(t *testing.T) {
 	}
 
 	for _, i := range crctosarch {
-		res := isValidOSArch(i.arch, i.os, i.variant)
+		res := IsValidOSArch(i.arch, i.os, i.variant)
 		if res != true {
 			t.Errorf("%s/%s/%s is an invalid os/arch or os/arch/variant combination", i.arch, i.os, i.variant)
 		}
 	}
 
 	for _, j := range wrongosarch {
-		res := isValidOSArch(j.arch, j.os, j.variant)
+		res := IsValidOSArch(j.arch, j.os, j.variant)
 		if res == true {
 			t.Errorf("%s/%s/%s is an invalid os/arch or os/arch/variant combination", j.arch, j.os, j.variant)
 		}

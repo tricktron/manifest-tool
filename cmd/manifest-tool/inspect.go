@@ -1,7 +1,6 @@
 package main
 
 import (
-	"context"
 	"encoding/json"
 	"fmt"
 	"path/filepath"
@@ -9,8 +8,8 @@ import (
 	"github.com/estesp/manifest-tool/pkg/registry"
 	"github.com/estesp/manifest-tool/pkg/store"
 	"github.com/estesp/manifest-tool/pkg/types"
+	"github.com/estesp/manifest-tool/pkg/util"
 
-	"github.com/docker/distribution/reference"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -32,13 +31,16 @@ var inspectCmd = cli.Command{
 	Action: func(c *cli.Context) {
 
 		name := c.Args().First()
-		imageRef, err := parseName(name)
+		imageRef, err := util.ParseName(name)
 		if err != nil {
 			logrus.Fatal(err)
 		}
 
 		memoryStore := store.NewMemoryStore()
-		descriptor, err := fetchDescriptor(c, memoryStore, imageRef)
+		resolver := util.NewResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
+			c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
+
+		descriptor, err := registry.FetchDescriptor(resolver, memoryStore, imageRef)
 		if err != nil {
 			logrus.Error(err)
 		}
@@ -119,19 +121,4 @@ func outputImage(name string, descriptor ocispec.Descriptor, manifest ocispec.Ma
 	for i, layer := range manifest.Layers {
 		fmt.Printf("      layer %d: digest = %s\n", i+1, layer.Digest)
 	}
-}
-
-func allMediaTypes() []string {
-	return []string{
-		types.MediaTypeDockerSchema2Manifest,
-		types.MediaTypeDockerSchema2ManifestList,
-		ocispec.MediaTypeImageManifest,
-		ocispec.MediaTypeImageIndex,
-	}
-}
-
-func fetchDescriptor(c *cli.Context, memoryStore *store.MemoryStore, imageRef reference.Named) (ocispec.Descriptor, error) {
-	resolver := newResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
-		c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
-	return registry.Fetch(context.Background(), memoryStore, types.NewRequest(imageRef, "", allMediaTypes(), resolver))
 }
