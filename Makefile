@@ -1,4 +1,4 @@
-.PHONY: all binary build static clean install install shell test-integration
+.PHONY: all binary build static clean install shell
 
 PREFIX ?= ${DESTDIR}/usr
 INSTALLDIR=${PREFIX}/bin
@@ -19,18 +19,18 @@ ifeq ($(INTERACTIVE), 1)
 endif
 DOCKER_RUN_DOCKER := $(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool "$(DOCKER_IMAGE)"
 
-all: build
+all: binary
 
 build:
-	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.13 /bin/bash -c "\
+	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.15 /bin/bash -c "\
 		go build -ldflags \"-X main.gitCommit=${COMMIT}\" -o manifest-tool github.com/estesp/manifest-tool/cmd/manifest-tool"
 
 # Target to build a dynamically linked binary
-binary:
+binary: pkg/util/oslist.go
 	go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool/cmd/manifest-tool
 
 # Target to build a statically linked binary
-static:
+static: pkg/util/oslist.go
 	GO_EXTLINK_ENABLED=0 CGO_ENABLED=0 go build \
 	   -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT}" \
 	   -tags netgo -installsuffix netgo \
@@ -41,6 +41,10 @@ build-container:
 
 clean:
 	rm -f manifest-tool
+	rm -f pkg/util/oslist.go
+
+pkg/util/oslist.go:
+	( cd pkg/util; go generate )
 
 cross:
 	hack/cross.sh
@@ -57,6 +61,3 @@ install:
 
 shell: build-container
 	$(DOCKER_RUN_DOCKER) bash
-
-validate: build-container
-	$(DOCKER_RUN_DOCKER) hack/make.sh validate-git-marks validate-gofmt validate-lint validate-vet

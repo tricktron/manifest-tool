@@ -117,7 +117,9 @@ jobs:
           path: src/github.com/estesp/manifest-tool
 
       - name: Make
-        run: make binary
+        run: |
+          make clean
+          make binary
         working-directory: src/github.com/estesp/manifest-tool
 
   #
