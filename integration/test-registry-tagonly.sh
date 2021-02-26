@@ -2,7 +2,7 @@
 
 ## This script will test creating a manifest list against a specified registry
 ## that claims to support the OCI distribution API and the Docker v2.2 image
-## specification or OCI v1 image spec.
+## specification (or OCI v1 image spec).
 
 ## It expects `manifest-tool` to be in the $PATH as well as the docker client.
 ## You must be authenticated via `docker login` to the registry provided or
@@ -13,6 +13,10 @@
 ## registry/repo and then use the `manifest-tool` to assemble them into a
 ## manifest list and push using the V2 API and V2 features (like cross-repository
 ## push and references to blobs already existing)
+
+## This variant only uses tags instead of pushing to different repositories
+## for registries where creation of an image repo is normalized to a single
+## image repo.
 
 _REGISTRY="${1}"
 
@@ -37,16 +41,15 @@ echo ">> 2: Tagging and pushing images to registry ${_REGISTRY}"
 for i in $_IMAGELIST; do
 	target="${i/\//_}"
 	[ "${target}" == "${i}" ] && {
-		# special case for no arch prefix on amd64 (x86_64 Linux) images  
+		# special case for no arch prefix on amd64 (x86_64 Linux) images
 		target="amd64_${i}"
 	}
-	echo docker tag ${i}:latest ${_REGISTRY}/${target}:latest
-	docker tag ${i}:latest ${_REGISTRY}/${target}:latest
-	docker push ${_REGISTRY}/${target}:latest
+	echo docker tag ${i}:latest ${_REGISTRY}:${target}_latest
+	docker tag ${i}:latest ${_REGISTRY}:${target}_latest
+	docker push ${_REGISTRY}:${target}_latest
 done
 
 echo ">> 4: Attempt creating manifest list on registry ${_REGISTRY}"
 
-sed s,__REGISTRY__,${_REGISTRY}, test-registry.yml >test-registry.yaml
+sed s,__REGISTRY__,${_REGISTRY}, test-registry-tag.yml >test-registry.yaml
 manifest-tool --debug push from-spec test-registry.yaml
-
