@@ -1,0 +1,23 @@
+image: __REGISTRY__:latest
+manifests:
+  -
+    image: __REGISTRY__:ppc64le_alpine_latest
+    platform:
+      architecture: ppc64le
+      os: linux
+  -
+    image: __REGISTRY__:amd64_alpine_latest
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: __REGISTRY__:s390x_alpine_latest
+    platform:
+      architecture: s390x
+      os: linux
+  -
+    image: __REGISTRY__:aarch64_alpine_latest
+    platform:
+      architecture: arm64
+      os: linux
+      variant: v8
