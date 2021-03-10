@@ -1,4 +1,8 @@
-FROM golang:1.13
+FROM golang:1.16
+
+# TODO this is going to blow up in Go 1.17+! (no more GOPATH)
+ENV GO111MODULE auto
+# https://blog.golang.org/go116-module-changes
 
 ENV GO_TOOLS_COMMIT 823804e1ae08dbb14eb807afc7db9993bc9e3cc3
 # Grab Go's cover tool for dead-simple code coverage testing

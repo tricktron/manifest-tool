@@ -26,6 +26,9 @@ PLATFORMS=(
 
   # MIPS
   linux/mips64le
+
+  # RISC-V
+  linux/riscv64
 )
 
 FAILURES=()
