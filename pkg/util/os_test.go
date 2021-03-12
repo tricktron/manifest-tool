@@ -6,8 +6,6 @@ func TestValidOSArch(t *testing.T) {
 	var crctosarch = []struct {
 		arch, os, variant string
 	}{
-		{arch: "linux", os: "arm"},
-		{arch: "windows", os: "amd64"},
 		{arch: "darwin", os: "amd64"},
 		{arch: "darwin", os: "arm64"},
 		{arch: "dragonfly", os: "amd64"},
@@ -22,10 +20,11 @@ func TestValidOSArch(t *testing.T) {
 		{arch: "linux", os: "arm", variant: "v7"},
 		{arch: "linux", os: "arm64"},
 		{arch: "linux", os: "arm64", variant: "v8"},
-		{arch: "linux", os: "ppc64"},
-		{arch: "linux", os: "ppc64le"},
 		{arch: "linux", os: "mips64"},
 		{arch: "linux", os: "mips64le"},
+		{arch: "linux", os: "ppc64"},
+		{arch: "linux", os: "ppc64le"},
+		{arch: "linux", os: "riscv64"},
 		{arch: "linux", os: "s390x"},
 		{arch: "netbsd", os: "386"},
 		{arch: "netbsd", os: "amd64"},
