@@ -75,7 +75,7 @@ func nonLayerChildHandler(provider ccontent.Provider) images.HandlerFunc {
 			}
 
 			descs = append(descs, index.Manifests...)
-		case ocispec.MediaTypeImageLayer, ocispec.MediaTypeImageLayerGzip, types.MediaTypeDockerTarLayer, types.MediaTypeDockerTarGzipLayer:
+		case ocispec.MediaTypeImageLayer, ocispec.MediaTypeImageLayerGzip, types.MediaTypeDockerTarGzipLayer:
 			// we want to save the descriptor info about layers in our content store
 			// in case we are going to handle push of a manifest list (will need to handle
 			// have the details for doing blob mounting on manifest list/index push)

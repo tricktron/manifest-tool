@@ -4,6 +4,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/estesp/manifest-tool/pkg/store"
@@ -77,6 +78,10 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 		// set labels for handling distribution source to get automatic cross-repo blob mounting for the layers
 		info, _ := memoryStore.Info(context.TODO(), descriptor.Digest)
 		for _, layer := range man.Layers {
+			// only need to handle cross-repo blob mount for distributable layer types
+			if nonDistributable(layer.MediaType) {
+				continue
+			}
 			info.Digest = layer.Digest
 			if _, err := memoryStore.Update(context.TODO(), info, ""); err != nil {
 				logrus.Warnf("couldn't update in-memory store labels for %v: %v", info.Digest, err)
@@ -140,4 +145,11 @@ func resolvePlatform(descriptor ocispec.Descriptor, img types.ManifestEntry, img
 		return nil, fmt.Errorf("Manifest entry for image %s has unsupported os/arch or os/arch/variant combination: %s/%s/%s", img.Image, platform.OS, platform.Architecture, platform.Variant)
 	}
 	return platform, nil
+}
+
+func nonDistributable(mediaType string) bool {
+	if strings.Index(mediaType, "foreign") > 0 || strings.Index(mediaType, "nondistributable") > 0 {
+		return true
+	}
+	return false
 }
