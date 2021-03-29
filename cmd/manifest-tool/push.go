@@ -52,10 +52,11 @@ var pushCmd = cli.Command{
 					logrus.Fatalf(fmt.Sprintf("Can't unmarshal YAML file %q: %v", filePath, err))
 				}
 
-				_, _, err = registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
+				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
 				if err != nil {
 					logrus.Fatal(err)
 				}
+				fmt.Printf("Digest: %s %d\n", digest, length)
 			},
 		},
 		{
@@ -114,10 +115,11 @@ var pushCmd = cli.Command{
 					Image:     target,
 					Manifests: srcImages,
 				}
-				_, _, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
+				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), filepath.Join(c.GlobalString("docker-cfg"), "config.json"))
 				if err != nil {
 					logrus.Fatal(err)
 				}
+				fmt.Printf("Digest: %s %d\n", digest, length)
 			},
 		},
 	},
