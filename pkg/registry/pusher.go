@@ -89,7 +89,21 @@ func push(ref reference.Reference, desc ocispec.Descriptor, resolver remotes.Res
 	if err != nil {
 		return err
 	}
-	var wrapper func(images.Handler) images.Handler
+	wrapper := func(f images.Handler) images.Handler {
+		return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			children, err := f.Handle(ctx, desc)
+			if err != nil {
+				return nil, err
+			}
+			filtered := children[:0]
+			for _, c := range children {
+				if !nonDistributable(c.MediaType) {
+					filtered = append(filtered, c)
+				}
+			}
+			return filtered, nil
+		})
+	}
 	return remotes.PushContent(ctx, pusher, desc, ms, nil, wrapper)
 }
 
