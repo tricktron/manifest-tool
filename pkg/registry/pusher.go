@@ -47,10 +47,11 @@ func Push(m types.ManifestList, addedTags []string, ms *store.MemoryStore) (stri
 	}
 	for _, tag := range addedTags {
 		taggedRef, err := reference.WithTag(baseRef, tag)
+		logrus.Infof("pushing extra tag '%s' to manifest list/index: %s", tag, desc.Digest.String())
 		if err != nil {
 			return "", 0, errors.Wrapf(err, "Error creating additional tag reference: %s", tag)
 		}
-		if err = push(taggedRef, desc, m.Resolver, ms); err != nil {
+		if err = pushTagOnly(taggedRef, desc, m.Resolver, ms); err != nil {
 			return "", 0, errors.Wrapf(err, "Error pushing additional tag reference: %s", tag)
 		}
 	}
@@ -76,10 +77,12 @@ func buildManifest(m types.ManifestList) (ocispec.Descriptor, []byte, error) {
 		return ocispec.Descriptor{}, []byte{}, err
 	}
 	desc := ocispec.Descriptor{
-		Digest:    digest.FromBytes(bytes),
-		MediaType: mediaType,
-		Size:      int64(len(bytes)),
+		Digest:      digest.FromBytes(bytes),
+		MediaType:   mediaType,
+		Size:        int64(len(bytes)),
+		Annotations: map[string]string{},
 	}
+	desc.Annotations[ocispec.AnnotationRefName] = m.Name
 	return desc, bytes, nil
 }
 
@@ -104,7 +107,29 @@ func push(ref reference.Reference, desc ocispec.Descriptor, resolver remotes.Res
 			return filtered, nil
 		})
 	}
-	return remotes.PushContent(ctx, pusher, desc, ms, nil, wrapper)
+	return remotes.PushContent(ctx, pusher, desc, ms, nil, nil, wrapper)
+}
+
+// used to push only a tag for the "additional tags" feature of manifest-tool
+func pushTagOnly(ref reference.Reference, desc ocispec.Descriptor, resolver remotes.Resolver, ms *store.MemoryStore) error {
+	ctx := context.Background()
+	pusher, err := resolver.Pusher(ctx, ref.String())
+	if err != nil {
+		return err
+	}
+	// wrapper will not descend to children; all components have already been pushed and we only want an additional
+	// tag on the root descriptor (e.g. pushing a "4.2", "4", and "latest" tags after pushing a full "4.2.2" image)
+	wrapper := func(f images.Handler) images.Handler {
+		return images.HandlerFunc(func(ctx context.Context, desc ocispec.Descriptor) ([]ocispec.Descriptor, error) {
+			_, err := f.Handle(ctx, desc)
+			if err != nil {
+				return nil, err
+			}
+			return nil, nil
+		})
+	}
+	desc.Annotations[ocispec.AnnotationRefName] = ref.String()
+	return remotes.PushContent(ctx, pusher, desc, ms, nil, nil, wrapper)
 }
 
 func ociIndex(m []types.Manifest) ocispec.Index {
