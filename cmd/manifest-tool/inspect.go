@@ -10,6 +10,7 @@ import (
 	"github.com/estesp/manifest-tool/pkg/types"
 	"github.com/estesp/manifest-tool/pkg/util"
 
+	"github.com/fatih/color"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
@@ -80,13 +81,19 @@ var inspectCmd = cli.Command{
 }
 
 func outputList(name string, cs *store.MemoryStore, descriptor ocispec.Descriptor, index ocispec.Index) {
-	fmt.Printf("Name:   %s (Type: %s)\n", name, descriptor.MediaType)
-	fmt.Printf("Digest: %s\n", descriptor.Digest)
-	fmt.Printf(" * Contains %d manifest references:\n", len(index.Manifests))
+	var (
+		yellow = color.New(color.Bold, color.FgYellow).SprintFunc()
+		red    = color.New(color.Bold, color.FgRed).SprintFunc()
+		blue   = color.New(color.Bold, color.FgBlue).SprintFunc()
+		green  = color.New(color.Bold, color.FgGreen).SprintFunc()
+	)
+	fmt.Printf("Name:   %s (Type: %s)\n", green(name), green(descriptor.MediaType))
+	fmt.Printf("Digest: %s\n", yellow(descriptor.Digest))
+	fmt.Printf(" * Contains %s manifest references:\n", red(len(index.Manifests)))
 	for i, img := range index.Manifests {
-		fmt.Printf("%d    Mfst Type: %s\n", i+1, img.MediaType)
-		fmt.Printf("%d       Digest: %s\n", i+1, img.Digest)
-		fmt.Printf("%d  Mfst Length: %d\n", i+1, img.Size)
+		fmt.Printf("[%d]     Type: %s\n", i+1, green(img.MediaType))
+		fmt.Printf("[%d]   Digest: %s\n", i+1, yellow(img.Digest))
+		fmt.Printf("[%d]   Length: %s\n", i+1, blue(img.Size))
 		_, db, _ := cs.Get(img)
 		switch img.MediaType {
 		case ocispec.MediaTypeImageManifest, types.MediaTypeDockerSchema2Manifest:
@@ -94,15 +101,21 @@ func outputList(name string, cs *store.MemoryStore, descriptor ocispec.Descripto
 			if err := json.Unmarshal(db, &man); err != nil {
 				logrus.Fatal(err)
 			}
-			fmt.Printf("%d     Platform:\n", i+1)
-			fmt.Printf("%d           -      OS: %s\n", i+1, img.Platform.OS)
-			fmt.Printf("%d           - OS Vers: %s\n", i+1, img.Platform.OSVersion)
-			fmt.Printf("%d           - OS Feat: %s\n", i+1, img.Platform.OSFeatures)
-			fmt.Printf("%d           -    Arch: %s\n", i+1, img.Platform.Architecture)
-			fmt.Printf("%d           - Variant: %s\n", i+1, img.Platform.Variant)
-			fmt.Printf("%d     # Layers: %d\n", i+1, len(man.Layers))
+			fmt.Printf("[%d] Platform:\n", i+1)
+			fmt.Printf("[%d]    -      OS: %s\n", i+1, green(img.Platform.OS))
+			if img.Platform.OSVersion != "" {
+				fmt.Printf("[%d]    - OS Vers: %s\n", i+1, green(img.Platform.OSVersion))
+			}
+			if len(img.Platform.OSFeatures) > 0 {
+				fmt.Printf("[%d]    - OS Feat: %s\n", i+1, green(img.Platform.OSFeatures))
+			}
+			fmt.Printf("[%d]    -    Arch: %s\n", i+1, green(img.Platform.Architecture))
+			if img.Platform.Variant != "" {
+				fmt.Printf("[%d]    - Variant: %s\n", i+1, green(img.Platform.Variant))
+			}
+			fmt.Printf("[%d] # Layers: %s\n", i+1, red(len(man.Layers)))
 			for j, layer := range man.Layers {
-				fmt.Printf("         layer %d: digest = %s\n", j+1, layer.Digest)
+				fmt.Printf("     layer %s: digest = %s\n", red(fmt.Sprintf("%02d", j+1)), yellow(layer.Digest))
 			}
 			fmt.Println()
 		default:
@@ -113,12 +126,19 @@ func outputList(name string, cs *store.MemoryStore, descriptor ocispec.Descripto
 }
 
 func outputImage(name string, descriptor ocispec.Descriptor, manifest ocispec.Manifest, config ocispec.Image) {
-	fmt.Printf("Name: %s (Type: %s)\n", name, descriptor.MediaType)
-	fmt.Printf("      Digest: %s\n", descriptor.Digest)
-	fmt.Printf("          OS: %s\n", config.OS)
-	fmt.Printf("        Arch: %s\n", config.Architecture)
-	fmt.Printf("    # Layers: %d\n", len(manifest.Layers))
+	var (
+		yellow = color.New(color.Bold, color.FgYellow).SprintFunc()
+		red    = color.New(color.Bold, color.FgRed).SprintFunc()
+		blue   = color.New(color.Bold, color.FgBlue).SprintFunc()
+		green  = color.New(color.Bold, color.FgGreen).SprintFunc()
+	)
+	fmt.Printf("Name: %s (Type: %s)\n", green(name), green(descriptor.MediaType))
+	fmt.Printf("      Digest: %s\n", yellow(descriptor.Digest))
+	fmt.Printf("        Size: %s\n", blue(descriptor.Size))
+	fmt.Printf("          OS: %s\n", green(config.OS))
+	fmt.Printf("        Arch: %s\n", green(config.Architecture))
+	fmt.Printf("    # Layers: %s\n", red(len(manifest.Layers)))
 	for i, layer := range manifest.Layers {
-		fmt.Printf("      layer %d: digest = %s\n", i+1, layer.Digest)
+		fmt.Printf("      layer %s: digest = %s\n", red(fmt.Sprintf("%02d", i+1)), yellow(layer.Digest))
 	}
 }
