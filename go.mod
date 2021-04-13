@@ -3,7 +3,7 @@ module github.com/estesp/manifest-tool
 go 1.16
 
 require (
-	github.com/containerd/containerd v1.5.0-beta.4.0.20210402042452-261c107ffc4f
+	github.com/containerd/containerd v1.5.0-rc.1
 	github.com/deislabs/oras v0.8.1
 	github.com/docker/cli v20.10.0-beta1+incompatible // indirect
 	github.com/docker/distribution v2.7.1+incompatible
