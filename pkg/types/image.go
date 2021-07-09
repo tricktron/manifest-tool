@@ -16,6 +16,8 @@ const (
 // Image struct handles Windows support extensions to OCI spec
 type Image struct {
 	ocispec.Image
+	// TODO https://github.com/opencontainers/image-spec/pull/809
+	Variant    string   `json:"variant,omitempty"`
 	OSVersion  string   `json:"os.version,omitempty"`
 	OSFeatures []string `json:"os.features,omitempty"`
 }
