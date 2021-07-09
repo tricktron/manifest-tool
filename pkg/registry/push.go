@@ -121,22 +121,26 @@ func resolvePlatform(descriptor ocispec.Descriptor, img types.ManifestEntry, img
 		platform = &ocispec.Platform{}
 	}
 	// fill os/arch from inspected image if not specified in input YAML
-	if img.Platform.OS == "" && img.Platform.Architecture == "" {
+	if platform.OS == "" && platform.Architecture == "" {
 		// prefer a full platform object, if one is already available (and appears to have meaningful content)
-		if descriptor.Platform.OS != "" || descriptor.Platform.Architecture != "" {
+		if descriptor.Platform != nil && (descriptor.Platform.OS != "" || descriptor.Platform.Architecture != "") {
 			platform = descriptor.Platform
 		} else if imgConfig.OS != "" || imgConfig.Architecture != "" {
 			platform.OS = imgConfig.OS
 			platform.Architecture = imgConfig.Architecture
 		}
 	}
+	// if Variant is specified in the origin image but not the descriptor or YAML, bubble it up
+	if imgConfig.Variant != "" && platform.Variant == "" {
+		platform.Variant = imgConfig.Variant
+	}
 	// Windows: if the origin image has OSFeature and/or OSVersion information, and
 	// these values were not specified in the creation YAML, then
 	// retain the origin values in the Platform definition for the manifest list:
-	if imgConfig.OSVersion != "" && img.Platform.OSVersion == "" {
+	if imgConfig.OSVersion != "" && platform.OSVersion == "" {
 		platform.OSVersion = imgConfig.OSVersion
 	}
-	if len(imgConfig.OSFeatures) > 0 && len(img.Platform.OSFeatures) == 0 {
+	if len(imgConfig.OSFeatures) > 0 && len(platform.OSFeatures) == 0 {
 		platform.OSFeatures = imgConfig.OSFeatures
 	}
 
