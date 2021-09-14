@@ -2,6 +2,7 @@
 
 set -eu -o pipefail
 
+cd v2
 go mod tidy
 if [ -d vendor ]; then
    rm -rf vendor/
@@ -25,3 +26,4 @@ if [ "$DIFF" ]; then
 else
     echo "$DIFF_PATH is correct"
 fi
+cd ..
