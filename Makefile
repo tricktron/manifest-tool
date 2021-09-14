@@ -22,29 +22,29 @@ DOCKER_RUN_DOCKER := $(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/man
 all: binary
 
 build:
-	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.16 /bin/bash -c "\
-		go build -ldflags \"-X main.gitCommit=${COMMIT}\" -o manifest-tool github.com/estesp/manifest-tool/cmd/manifest-tool"
+	$(DOCKER_RUN) -v $(shell pwd):/go/src/github.com/estesp/manifest-tool -w /go/src/github.com/estesp/manifest-tool golang:1.17 /bin/bash -c "\
+		cd v2 && go build -ldflags \"-X main.gitCommit=${COMMIT}\" -o ../manifest-tool github.com/estesp/manifest-tool/v2/cmd/manifest-tool"
 
 # Target to build a dynamically linked binary
-binary: pkg/util/oslist.go
-	go build -ldflags "-X main.gitCommit=${COMMIT}" -o manifest-tool github.com/estesp/manifest-tool/cmd/manifest-tool
+binary: v2/pkg/util/oslist.go
+	cd v2 && go build -ldflags "-X main.gitCommit=${COMMIT}" -o ../manifest-tool github.com/estesp/manifest-tool/v2/cmd/manifest-tool
 
 # Target to build a statically linked binary
-static: pkg/util/oslist.go
-	GO_EXTLINK_ENABLED=0 CGO_ENABLED=0 go build \
+static: v2/pkg/util/oslist.go
+	cd v2 && GO_EXTLINK_ENABLED=0 CGO_ENABLED=0 go build \
 	   -ldflags "-w -extldflags -static -X main.gitCommit=${COMMIT}" \
 	   -tags netgo -installsuffix netgo \
-	   -o manifest-tool github.com/estesp/manifest-tool/cmd/manifest-tool
+	   -o ../manifest-tool github.com/estesp/manifest-tool/v2/cmd/manifest-tool
 
 build-container:
 	docker build ${DOCKER_BUILD_ARGS} -t "$(DOCKER_IMAGE)" .
 
 clean:
 	rm -f manifest-tool
-	rm -f pkg/util/oslist.go
+	rm -f v2/pkg/util/oslist.go
 
-pkg/util/oslist.go:
-	( cd pkg/util; go generate )
+v2/pkg/util/oslist.go:
+	( cd v2/pkg/util; go generate )
 
 cross:
 	hack/cross.sh
