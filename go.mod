@@ -20,4 +20,8 @@ require (
 	rsc.io/letsencrypt v0.0.3 // indirect
 )
 
-replace github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
+replace (
+	github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
+	// urfave/cli must be <= v1.22.1 due to a regression: https://github.com/urfave/cli/issues/1092
+	github.com/urfave/cli => github.com/urfave/cli v1.22.1
+)
