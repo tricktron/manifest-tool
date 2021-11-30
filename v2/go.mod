@@ -12,7 +12,7 @@ require (
 	github.com/fatih/color v1.10.0
 	github.com/gorilla/mux v1.7.4-0.20190830121156-884b5ffcbd3a // indirect
 	github.com/opencontainers/go-digest v1.0.0
-	github.com/opencontainers/image-spec v1.0.1
+	github.com/opencontainers/image-spec v1.0.2
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
 	github.com/urfave/cli v1.22.2
