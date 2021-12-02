@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"path/filepath"
 
+	"github.com/docker/distribution/reference"
 	"github.com/estesp/manifest-tool/v2/pkg/registry"
 	"github.com/estesp/manifest-tool/v2/pkg/store"
 	"github.com/estesp/manifest-tool/v2/pkg/types"
@@ -35,6 +36,9 @@ var inspectCmd = cli.Command{
 		imageRef, err := util.ParseName(name)
 		if err != nil {
 			logrus.Fatal(err)
+		}
+		if _, ok := imageRef.(reference.NamedTagged); !ok {
+			logrus.Fatal("image reference must include a tag; manifest-tool does not default to 'latest'")
 		}
 
 		memoryStore := store.NewMemoryStore()
