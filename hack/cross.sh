@@ -16,7 +16,7 @@ PLATFORMS=(
   # format: GOOS/GOARCH[/GOARM]
 
   # OSX, Windows, Linux x86_64/i386
-  darwin/amd64 windows/amd64 linux/amd64 linux/386
+  darwin/amd64 darwin/arm64 windows/amd64 linux/amd64 linux/386
 
   # IBM POWER and z Systems
   linux/ppc64le linux/s390x
