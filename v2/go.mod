@@ -6,7 +6,7 @@ require (
 	github.com/containerd/containerd v1.5.9
 	github.com/deislabs/oras v0.8.1
 	github.com/docker/cli v20.10.0-beta1+incompatible // indirect
-	github.com/docker/distribution v2.7.1+incompatible
+	github.com/docker/distribution v2.8.0+incompatible
 	github.com/docker/docker v1.4.2-0.20200203170920-46ec8731fbce
 	github.com/docker/go-connections v0.4.1-0.20190612165340-fd1b1942c4d5 // indirect
 	github.com/fatih/color v1.10.0
