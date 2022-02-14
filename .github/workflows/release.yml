@@ -91,6 +91,135 @@ jobs:
           name: manifest-tool-binaries
           path: src/github.com/estesp/manifest-tool/*.tar.gz*
 
+  containers-lx:
+    name: Build and push Linux release images
+    runs-on: ubuntu-18.04
+    needs: [check]
+    timeout-minutes: 10
+
+    steps:
+      - name: Set env
+        shell: bash
+        run: |
+          releasever=${{ github.ref }}
+          releasever="${releasever#refs/tags/}"
+          echo "RELEASE_VER=${releasever}" >> $GITHUB_ENV
+          echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Checkout manifest-tool
+        uses: actions/checkout@v2
+        with:
+          repository: estesp/manifest-tool
+          ref: ${{ github.ref }}
+          path: src/github.com/estesp/manifest-tool
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Linux containers
+        shell: bash
+        run: |
+          docker buildx build --platform linux/arm/v6 --push -t mplatform/manifest-tool:linux_arm_v6_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/arm/v7 --push -t mplatform/manifest-tool:linux_arm_v7_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/amd64 --push -t mplatform/manifest-tool:linux_amd64_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/arm64 --push -t mplatform/manifest-tool:linux_arm64_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/ppc64le --push -t mplatform/manifest-tool:linux_ppc64le_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/s390x --push -t mplatform/manifest-tool:linux_s390x_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/386 --push -t mplatform/manifest-tool:linux_i386_${RELEASE_VER} -f hack/Dockerfile.linux .
+          docker buildx build --platform linux/riscv64 --push -t mplatform/manifest-tool:linux_riscv64_${RELEASE_VER} -f hack/Dockerfile.linux .
+        working-directory: src/github.com/estesp/manifest-tool
+
+  containers-win:
+    name: Build and push Windows release images
+    runs-on: windows-2019
+    needs: [check]
+    timeout-minutes: 30
+
+    steps:
+      - name: Set env
+        shell: bash
+        run: |
+          releasever=${{ github.ref }}
+          releasever="${releasever#refs/tags/}"
+          echo "RELEASE_VER=${releasever}" >> $GITHUB_ENV
+          echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Checkout manifest-tool
+        uses: actions/checkout@v2
+        with:
+          repository: estesp/manifest-tool
+          ref: ${{ github.ref }}
+          path: src/github.com/estesp/manifest-tool
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Build Windows containers
+        shell: bash
+        run: |
+          make binary
+          docker build -t mplatform/manifest-tool:win2019_${RELEASE_VER} -f hack/Dockerfile.windows .
+          docker build -t mplatform/manifest-tool:win2016_${RELEASE_VER} -f hack/Dockerfile.windows2016 .
+          docker push mplatform/manifest-tool:win2019_${RELEASE_VER}
+          docker push mplatform/manifest-tool:win2016_${RELEASE_VER}
+        working-directory: src/github.com/estesp/manifest-tool
+
+  container-assemble:
+    name: Assemble and push multi-platform release image
+    runs-on: ubuntu-18.04
+    needs: [containers-lx, containers-win]
+    timeout-minutes: 10
+
+    steps:
+      - name: Set env
+        shell: bash
+        run: |
+          releasever=${{ github.ref }}
+          releasever="${releasever#refs/tags/}"
+          echo "RELEASE_VER=${releasever}" >> $GITHUB_ENV
+          echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - name: Login to DockerHub
+        uses: docker/login-action@v1
+        with:
+          username: ${{ secrets.DOCKER_USERNAME }}
+          password: ${{ secrets.DOCKER_PASSWORD }}
+
+      - name: Checkout manifest-tool
+        uses: actions/checkout@v2
+        with:
+          repository: estesp/manifest-tool
+          ref: ${{ github.ref }}
+          path: src/github.com/estesp/manifest-tool
+
+      - name: Build and push manifest-list
+        env:
+          PRERELEASE: ${{ contains(github.ref, 'beta') || contains(github.ref, 'rc') }}
+        shell: bash
+        run: |
+          TMPROOT=$(mktemp -d)
+          git clone https://github.com/estesp/manifest-tool.git "${TMPROOT}"/manifest-tool
+          pushd "${TMPROOT}"/manifest-tool
+          make binary
+          sudo make install PREFIX=/usr/local
+          popd
+          if [ "${PRERELEASE}" == "true" ]; then
+            cat hack/pushml-pre.yaml | sed "s,VERS,${RELEASE_VER}," >pushml.yml
+          else
+            cat hack/pushml.yaml | sed "s,VERS,${RELEASE_VER}," >pushml.yml
+          fi
+          /usr/local/bin/manifest-tool push from-spec pushml.yml
+        working-directory: src/github.com/estesp/manifest-tool
+
   release:
     name: Create manifest-tool Release
     runs-on: ubuntu-18.04
