@@ -1,0 +1,56 @@
+image: mplatform/manifest-tool:VERS
+tags: [ "latest" ]
+manifests:
+  -
+    image: mplatform/manifest-tool:linux_ppc64le_VERS
+    platform:
+      architecture: ppc64le
+      os: linux
+  -
+    image: mplatform/manifest-tool:linux_amd64_VERS
+    platform:
+      architecture: amd64
+      os: linux
+  -
+    image: mplatform/manifest-tool:linux_i386_VERS
+    platform:
+      architecture: 386
+      os: linux
+  -
+    image: mplatform/manifest-tool:linux_s390x_VERS
+    platform:
+      architecture: s390x
+      os: linux
+  -
+    image: mplatform/manifest-tool:linux_riscv64_VERS
+    platform:
+      architecture: riscv64
+      os: linux
+  -
+    image: mplatform/manifest-tool:linux_arm64_VERS
+    platform:
+      architecture: arm64
+      os: linux
+      variant: v8
+  -
+    image: mplatform/manifest-tool:linux_arm_v7_VERS
+    platform:
+      architecture: arm
+      os: linux
+      variant: v7
+  -
+    image: mplatform/manifest-tool:linux_arm_v6_VERS
+    platform:
+      architecture: arm
+      os: linux
+      variant: v6
+  -
+    image: mplatform/manifest-tool:win2019_VERS
+    platform:
+      architecture: amd64
+      os: windows
+  -
+    image: mplatform/manifest-tool:win2016_VERS
+    platform:
+      architecture: amd64
+      os: windows
