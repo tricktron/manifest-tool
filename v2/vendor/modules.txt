@@ -9,9 +9,17 @@ github.com/Microsoft/go-winio/pkg/guid
 # github.com/Microsoft/hcsshim v0.8.23
 ## explicit; go 1.13
 github.com/Microsoft/hcsshim/osversion
+# github.com/Shopify/logrus-bugsnag v0.0.0-20171204204709-577dee27f20d
+## explicit
 # github.com/beorn7/perks v1.0.1
 ## explicit; go 1.11
 github.com/beorn7/perks/quantile
+# github.com/bshuster-repo/logrus-logstash-hook v1.0.2
+## explicit; go 1.16
+# github.com/bugsnag/bugsnag-go v2.1.2+incompatible
+## explicit
+# github.com/bugsnag/panicwrap v1.3.4
+## explicit
 # github.com/cespare/xxhash/v2 v2.1.1
 ## explicit; go 1.11
 github.com/cespare/xxhash/v2
@@ -39,18 +47,18 @@ github.com/containerd/continuity/pathdriver
 # github.com/cpuguy83/go-md2man/v2 v2.0.0
 ## explicit; go 1.12
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/deislabs/oras v0.8.1
-## explicit; go 1.13
+# github.com/deislabs/oras v0.9.0
+## explicit; go 1.15
 github.com/deislabs/oras/pkg/auth
 github.com/deislabs/oras/pkg/auth/docker
 github.com/deislabs/oras/pkg/content
-# github.com/docker/cli v20.10.0-beta1+incompatible
+# github.com/docker/cli v20.10.2+incompatible
 ## explicit
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
 github.com/docker/cli/cli/config/credentials
 github.com/docker/cli/cli/config/types
-# github.com/docker/distribution v2.8.0+incompatible
+# github.com/docker/distribution v2.8.0+incompatible => github.com/docker/distribution v2.8.0+incompatible
 ## explicit
 github.com/docker/distribution
 github.com/docker/distribution/digestset
@@ -109,9 +117,15 @@ github.com/docker/go-metrics
 # github.com/docker/go-units v0.4.0
 ## explicit
 github.com/docker/go-units
+# github.com/docker/libtrust v0.0.0-20160708172513-aabc10ec26b7
+## explicit
 # github.com/fatih/color v1.10.0
 ## explicit; go 1.13
 github.com/fatih/color
+# github.com/garyburd/redigo v1.6.3
+## explicit; go 1.17
+# github.com/gofrs/uuid v4.2.0+incompatible
+## explicit
 # github.com/gogo/protobuf v1.3.2
 ## explicit; go 1.15
 github.com/gogo/protobuf/proto
@@ -122,9 +136,13 @@ github.com/golang/protobuf/ptypes
 github.com/golang/protobuf/ptypes/any
 github.com/golang/protobuf/ptypes/duration
 github.com/golang/protobuf/ptypes/timestamp
+# github.com/gorilla/handlers v1.5.1
+## explicit; go 1.14
 # github.com/gorilla/mux v1.7.4-0.20190830121156-884b5ffcbd3a
 ## explicit; go 1.12
 github.com/gorilla/mux
+# github.com/kardianos/osext v0.0.0-20190222173326-2bc1f35cddc0
+## explicit
 # github.com/klauspost/compress v1.11.13
 ## explicit; go 1.13
 github.com/klauspost/compress/fse
@@ -190,6 +208,12 @@ github.com/sirupsen/logrus
 # github.com/urfave/cli v1.22.2 => github.com/urfave/cli v1.22.1
 ## explicit; go 1.11
 github.com/urfave/cli
+# github.com/yvasiyarov/go-metrics v0.0.0-20150112132944-c25f46c4b940
+## explicit
+# github.com/yvasiyarov/gorelic v0.0.7
+## explicit
+# github.com/yvasiyarov/newrelic_platform_go v0.0.0-20160601141957-9c099fbc30e9
+## explicit
 # golang.org/x/net v0.0.0-20210226172049-e18ecbb05110
 ## explicit; go 1.11
 golang.org/x/net/context/ctxhttp
@@ -247,5 +271,6 @@ google.golang.org/protobuf/types/known/timestamppb
 gopkg.in/yaml.v2
 # rsc.io/letsencrypt v0.0.3
 ## explicit
+# github.com/docker/distribution => github.com/docker/distribution v2.8.0+incompatible
 # github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
 # github.com/urfave/cli => github.com/urfave/cli v1.22.1
