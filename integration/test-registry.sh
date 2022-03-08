@@ -19,7 +19,7 @@ _REGISTRY="${1}"
 _IMAGELIST="s390x/alpine
 ppc64le/alpine
 aarch64/alpine
-alpine"
+amd64/alpine"
 
 [ -z "${_REGISTRY}" ] && {
 	echo "Please provide a registry URL + namespace/repo name as the first parameter"
@@ -36,16 +36,12 @@ done
 echo ">> 2: Tagging and pushing images to registry ${_REGISTRY}"
 for i in $_IMAGELIST; do
 	target="${i/\//_}"
-	[ "${target}" == "${i}" ] && {
-		# special case for no arch prefix on amd64 (x86_64 Linux) images  
-		target="amd64_${i}"
-	}
 	echo docker tag ${i}:latest ${_REGISTRY}/${target}:latest
 	docker tag ${i}:latest ${_REGISTRY}/${target}:latest
 	docker push ${_REGISTRY}/${target}:latest
 done
 
-echo ">> 4: Attempt creating manifest list on registry ${_REGISTRY}"
+echo ">> 3: Creating manifest list on registry ${_REGISTRY}"
 
 sed s,__REGISTRY__,${_REGISTRY}, test-registry.yml >test-registry.yaml
 manifest-tool --debug push from-spec test-registry.yaml
