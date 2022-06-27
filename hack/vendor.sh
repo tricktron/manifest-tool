@@ -3,7 +3,7 @@
 set -eu -o pipefail
 
 cd v2
-go mod tidy
+go mod tidy -compat=1.17
 if [ -d vendor ]; then
    rm -rf vendor/
    go mod vendor
