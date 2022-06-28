@@ -131,6 +131,14 @@ jobs:
           docker buildx build --platform linux/s390x --push -t mplatform/manifest-tool:linux_s390x_${RELEASE_VER} -f hack/Dockerfile.linux .
           docker buildx build --platform linux/386 --push -t mplatform/manifest-tool:linux_i386_${RELEASE_VER} -f hack/Dockerfile.linux .
           docker buildx build --platform linux/riscv64 --push -t mplatform/manifest-tool:linux_riscv64_${RELEASE_VER} -f hack/Dockerfile.linux .
+
+          docker buildx build --platform linux/arm/v6 --push -t mplatform/manifest-tool:alpine_linux_arm_v6_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/arm/v7 --push -t mplatform/manifest-tool:alpine_linux_arm_v7_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/amd64 --push -t mplatform/manifest-tool:alpine_linux_amd64_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/arm64 --push -t mplatform/manifest-tool:alpine_linux_arm64_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/ppc64le --push -t mplatform/manifest-tool:alpine_linux_ppc64le_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/s390x --push -t mplatform/manifest-tool:alpine_linux_s390x_${RELEASE_VER} -f hack/Dockerfile.alpine .
+          docker buildx build --platform linux/386 --push -t mplatform/manifest-tool:alpine_linux_i386_${RELEASE_VER} -f hack/Dockerfile.alpine .
         working-directory: src/github.com/estesp/manifest-tool
 
   containers-win:
@@ -226,8 +234,10 @@ jobs:
             cat hack/pushml-pre.yaml | sed "s,VERS,${RELEASE_VER}," >pushml.yml
           else
             cat hack/pushml.yaml | sed "s,VERS,${RELEASE_VER}," >pushml.yml
+            cat hack/pushml-alpine.yaml | sed "s,VERS,${RELEASE_VER}," >pushml-alpine.yml
           fi
           /usr/local/bin/manifest-tool push from-spec pushml.yml
+          /usr/local/bin/manifest-tool push from-spec pushml-alpine.yml
         working-directory: src/github.com/estesp/manifest-tool
 
   release:
