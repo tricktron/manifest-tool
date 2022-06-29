@@ -1,7 +1,9 @@
 package main
 
 import (
+	"fmt"
 	"os"
+	"path/filepath"
 
 	"github.com/docker/docker/cli/config"
 	"github.com/sirupsen/logrus"
@@ -55,7 +57,7 @@ func runApplication() error {
 		cli.StringFlag{
 			Name:  "docker-cfg",
 			Value: config.Dir(),
-			Usage: "Docker's cli config for auth",
+			Usage: "directory path containing a Docker-formatted config.json or path to a file formatted for Docker auth",
 		},
 	}
 	app.Before = func(c *cli.Context) error {
@@ -63,6 +65,30 @@ func runApplication() error {
 			logrus.SetLevel(logrus.DebugLevel)
 		} else {
 			logrus.SetLevel(logrus.WarnLevel)
+		}
+		dockerAuthPath := c.GlobalString("docker-cfg")
+		// if set to the default, we don't check for validity because it may not
+		// even exist
+		if dockerAuthPath == config.Dir() {
+			if err := c.Set("authconfig", filepath.Join(dockerAuthPath, "config.json")); err != nil {
+				return fmt.Errorf("unable to set client authconfig to context: %w", err)
+			}
+			return nil
+		}
+		// check if the user passed in a directory or an actual file
+		// if a dir, then append "config.json"; otherwise pass through
+		f, err := os.Stat(dockerAuthPath)
+		if err != nil {
+			return fmt.Errorf("failed to check state of docker-cfg value: %w", err)
+		}
+		if f.IsDir() {
+			if err := c.Set("authconfig", filepath.Join(dockerAuthPath, "config.json")); err != nil {
+				return fmt.Errorf("unable to set client authconfig to context: %w", err)
+			}
+		} else {
+			if err := c.Set("authconfig", dockerAuthPath); err != nil {
+				return fmt.Errorf("unable to set client authconfig to context: %w", err)
+			}
 		}
 		return nil
 	}
