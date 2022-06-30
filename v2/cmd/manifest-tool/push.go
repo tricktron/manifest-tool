@@ -52,7 +52,7 @@ var pushCmd = cli.Command{
 					logrus.Fatalf(fmt.Sprintf("Can't unmarshal YAML file %q: %v", filePath, err))
 				}
 
-				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), c.String("authconfig"))
+				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), c.GlobalString("docker-cfg"))
 				if err != nil {
 					logrus.Fatal(err)
 				}
@@ -115,7 +115,7 @@ var pushCmd = cli.Command{
 					Image:     target,
 					Manifests: srcImages,
 				}
-				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), c.String("authconfig"))
+				digest, length, err := registry.PushManifestList(c.GlobalString("username"), c.GlobalString("password"), yamlInput, c.Bool("ignore-missing"), c.GlobalBool("insecure"), c.GlobalBool("plain-http"), c.GlobalString("docker-cfg"))
 				if err != nil {
 					logrus.Fatal(err)
 				}

@@ -57,7 +57,7 @@ func runApplication() error {
 		cli.StringFlag{
 			Name:  "docker-cfg",
 			Value: config.Dir(),
-			Usage: "directory path containing a Docker-formatted config.json or path to a file formatted for Docker auth",
+			Usage: "either a directory path containing a Docker-formatted config.json or a specific JSON file formatted for registry auth",
 		},
 	}
 	app.Before = func(c *cli.Context) error {
@@ -70,24 +70,20 @@ func runApplication() error {
 		// if set to the default, we don't check for validity because it may not
 		// even exist
 		if dockerAuthPath == config.Dir() {
-			if err := c.Set("authconfig", filepath.Join(dockerAuthPath, "config.json")); err != nil {
-				return fmt.Errorf("unable to set client authconfig to context: %w", err)
+			if err := c.GlobalSet("docker-cfg", filepath.Join(dockerAuthPath, "config.json")); err != nil {
+				return fmt.Errorf("unable to update docker-cfg flag in context: %w", err)
 			}
 			return nil
 		}
 		// check if the user passed in a directory or an actual file
-		// if a dir, then append "config.json"; otherwise pass through
+		// if a dir, then append "config.json" for compatibility; otherwise pass through
 		f, err := os.Stat(dockerAuthPath)
 		if err != nil {
 			return fmt.Errorf("failed to check state of docker-cfg value: %w", err)
 		}
 		if f.IsDir() {
-			if err := c.Set("authconfig", filepath.Join(dockerAuthPath, "config.json")); err != nil {
-				return fmt.Errorf("unable to set client authconfig to context: %w", err)
-			}
-		} else {
-			if err := c.Set("authconfig", dockerAuthPath); err != nil {
-				return fmt.Errorf("unable to set client authconfig to context: %w", err)
+			if err := c.GlobalSet("docker-cfg", filepath.Join(dockerAuthPath, "config.json")); err != nil {
+				return fmt.Errorf("unable to set client to context: %w", err)
 			}
 		}
 		return nil

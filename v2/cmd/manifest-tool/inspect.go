@@ -42,7 +42,7 @@ var inspectCmd = cli.Command{
 
 		memoryStore := store.NewMemoryStore()
 		resolver := util.NewResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
-			c.GlobalBool("plain-http"), c.String("authconfig"))
+			c.GlobalBool("plain-http"), c.GlobalString("docker-cfg"))
 
 		descriptor, err := registry.FetchDescriptor(resolver, memoryStore, imageRef)
 		if err != nil {
