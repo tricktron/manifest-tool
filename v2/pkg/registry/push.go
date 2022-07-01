@@ -45,7 +45,7 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 			return hash, length, fmt.Errorf("Unable to parse image reference: %s: %v", img.Image, err)
 		}
 		if reference.Domain(targetRef) != reference.Domain(ref) {
-			return hash, length, fmt.Errorf("Cannot use source images from a different registry than the target image: %s != %s", reference.Domain(ref), reference.Domain(targetRef))
+			return hash, length, fmt.Errorf("Source image (%s) registry does not match target image (%s) registry", ref, targetRef)
 		}
 		descriptor, err := FetchDescriptor(resolver, memoryStore, ref)
 		if err != nil {
