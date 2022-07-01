@@ -3,7 +3,7 @@
 `manifest-tool` is a command line utility used to view or push multi-platform container image
 references located in an OCIv1 or Docker v2.2 compatible container registry.
 
-While several other tools include more complete capabilites to view and manipulate the
+While several other tools include more complete capabilities to view and manipulate the
 *manifest* objects associated with container images and artifacts, `manifest-tool` was created
 as one of the first command line tools capable of assembling "manifest lists" (Docker v2.2), now
 more commonly known as "indexes" in the OCIv1 image specification. [**Manifest lists**](https://github.com/distribution/distribution/blob/main/docs/spec/manifest-v2-2.md#manifest-list) or
