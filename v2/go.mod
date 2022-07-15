@@ -15,7 +15,7 @@ require (
 	github.com/opencontainers/image-spec v1.0.3-0.20211202183452-c5a74bcca799
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.8.1
-	github.com/urfave/cli v1.22.2
+	github.com/urfave/cli v1.22.9
 	gopkg.in/yaml.v2 v2.4.0
 	rsc.io/letsencrypt v0.0.3 // indirect
 )
@@ -69,6 +69,4 @@ require (
 replace (
 	github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
 	github.com/docker/docker => github.com/moby/moby v0.7.3-0.20190826074503-38ab9da00309
-	// urfave/cli must be <= v1.22.1 due to a regression: https://github.com/urfave/cli/issues/1092
-	github.com/urfave/cli => github.com/urfave/cli v1.22.1
 )
