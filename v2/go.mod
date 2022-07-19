@@ -61,5 +61,3 @@ require (
 	google.golang.org/protobuf v1.27.1 // indirect
 	gopkg.in/check.v1 v1.0.0-20200227125254-8fa46927fb4f // indirect
 )
-
-replace github.com/docker/distribution => github.com/docker/distribution v2.8.1+incompatible
