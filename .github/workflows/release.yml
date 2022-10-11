@@ -15,7 +15,7 @@ jobs:
 
     steps:
       - name: Checkout code
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           ref: ${{ github.ref }}
           path: src/github.com/estesp/manifest-tool
@@ -56,7 +56,7 @@ jobs:
 
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.19.2'
 
@@ -70,7 +70,7 @@ jobs:
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
       - name: Checkout manifest-tool
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: estesp/manifest-tool
           ref: ${{ github.ref }}
@@ -108,7 +108,7 @@ jobs:
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
       - name: Checkout manifest-tool
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: estesp/manifest-tool
           ref: ${{ github.ref }}
@@ -149,7 +149,7 @@ jobs:
 
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.19.2'
 
@@ -163,7 +163,7 @@ jobs:
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
       - name: Checkout manifest-tool
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: estesp/manifest-tool
           ref: ${{ github.ref }}
@@ -193,7 +193,7 @@ jobs:
 
     steps:
       - name: Install Go
-        uses: actions/setup-go@v2
+        uses: actions/setup-go@v3
         with:
           go-version: '1.19.2'
 
@@ -213,7 +213,7 @@ jobs:
           password: ${{ secrets.DOCKER_PASSWORD }}
 
       - name: Checkout manifest-tool
-        uses: actions/checkout@v2
+        uses: actions/checkout@v3
         with:
           repository: estesp/manifest-tool
           ref: ${{ github.ref }}

@@ -24,7 +24,7 @@ jobs:
         os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/github.com/estesp/manifest-tool
 
@@ -50,13 +50,13 @@ jobs:
     timeout-minutes: 5
 
     steps:
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/github.com/estesp/manifest-tool
           fetch-depth: 100
 
       - name: Set up Go
-        uses: actions/setup-go@v1
+        uses: actions/setup-go@v3
         with:
           go-version: 1.19.2
 
@@ -103,7 +103,7 @@ jobs:
         os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
-      - uses: actions/setup-go@v1
+      - uses: actions/setup-go@v3
         with:
           go-version: '1.19.2'
 
@@ -113,7 +113,7 @@ jobs:
           echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/github.com/estesp/manifest-tool
 
@@ -133,7 +133,7 @@ jobs:
     needs: [project, linters]
 
     steps:
-      - uses: actions/setup-go@v1
+      - uses: actions/setup-go@v3
         with:
           go-version: '1.19.2'
 
@@ -143,7 +143,7 @@ jobs:
           echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
         with:
           path: src/github.com/estesp/manifest-tool
 
