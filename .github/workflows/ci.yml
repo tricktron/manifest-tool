@@ -20,8 +20,8 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.18.3]
-        os: [ubuntu-18.04, macos-12, windows-2019]
+        go-version: [1.19.2]
+        os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
       - uses: actions/checkout@v2
@@ -46,7 +46,7 @@ jobs:
   #
   project:
     name: DCO/Vendor Checks
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 5
 
     steps:
@@ -58,7 +58,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v1
         with:
-          go-version: 1.18.3
+          go-version: 1.19.2
 
       - name: Set env
         shell: bash
@@ -100,12 +100,12 @@ jobs:
 
     strategy:
       matrix:
-        os: [ubuntu-18.04, macos-12, windows-2019]
+        os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.18.3'
+          go-version: '1.19.2'
 
       - name: Set env
         shell: bash
@@ -128,14 +128,14 @@ jobs:
   #
   cross:
     name: Cross-builds
-    runs-on: ubuntu-18.04
+    runs-on: ubuntu-20.04
     timeout-minutes: 10
     needs: [project, linters]
 
     steps:
       - uses: actions/setup-go@v1
         with:
-          go-version: '1.18.3'
+          go-version: '1.19.2'
 
       - name: Set env
         shell: bash
