@@ -2,7 +2,7 @@ package main
 
 import (
 	"fmt"
-	"io/ioutil"
+	"os"
 	"path/filepath"
 	"strings"
 
@@ -12,7 +12,7 @@ import (
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli"
-	yaml "gopkg.in/yaml.v2"
+	yaml "gopkg.in/yaml.v3"
 )
 
 var pushCmd = cli.Command{
@@ -43,7 +43,7 @@ var pushCmd = cli.Command{
 				if err != nil {
 					logrus.Fatalf(fmt.Sprintf("Can't resolve path to %q: %v", filePath, err))
 				}
-				yamlFile, err := ioutil.ReadFile(filename)
+				yamlFile, err := os.ReadFile(filename)
 				if err != nil {
 					logrus.Fatalf(fmt.Sprintf("Can't read YAML file %q: %v", filePath, err))
 				}
