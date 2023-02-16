@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"fmt"
+	"strings"
 
 	"github.com/docker/distribution/reference"
 	"github.com/estesp/manifest-tool/v2/pkg/registry"
@@ -92,11 +93,22 @@ func outputList(name string, cs *store.MemoryStore, descriptor ocispec.Descripto
 	)
 	fmt.Printf("Name:   %s (Type: %s)\n", green(name), green(descriptor.MediaType))
 	fmt.Printf("Digest: %s\n", yellow(descriptor.Digest))
-	fmt.Printf(" * Contains %s manifest references:\n", red(len(index.Manifests)))
+
+	outputStr := strings.Builder{}
+	var attestations int
 	for i, img := range index.Manifests {
-		fmt.Printf("[%d]     Type: %s\n", i+1, green(img.MediaType))
-		fmt.Printf("[%d]   Digest: %s\n", i+1, yellow(img.Digest))
-		fmt.Printf("[%d]   Length: %s\n", i+1, blue(img.Size))
+		var attestationDetail string
+
+		if aRefType, ok := img.Annotations["vnd.docker.reference.type"]; ok {
+			if aRefType == "attestation-manifest" {
+				attestations++
+				attestationDetail = " (vnd.docker.reference.type=attestation-manifest)"
+			}
+		}
+		outputStr.WriteString(fmt.Sprintf("[%d]     Type: %s%s\n", i+1, green(img.MediaType), green(attestationDetail)))
+		outputStr.WriteString(fmt.Sprintf("[%d]   Digest: %s\n", i+1, yellow(img.Digest)))
+		outputStr.WriteString(fmt.Sprintf("[%d]   Length: %s\n", i+1, blue(img.Size)))
+
 		_, db, _ := cs.Get(img)
 		switch img.MediaType {
 		case ocispec.MediaTypeImageManifest, types.MediaTypeDockerSchema2Manifest:
@@ -104,28 +116,46 @@ func outputList(name string, cs *store.MemoryStore, descriptor ocispec.Descripto
 			if err := json.Unmarshal(db, &man); err != nil {
 				logrus.Fatal(err)
 			}
-			fmt.Printf("[%d] Platform:\n", i+1)
-			fmt.Printf("[%d]    -      OS: %s\n", i+1, green(img.Platform.OS))
+			if len(attestationDetail) > 0 {
+				// only output info about the attestation info
+				attestRef := img.Annotations["vnd.docker.reference.digest"]
+				outputStr.WriteString(fmt.Sprintf("[%d]       >>> Attestation for digest: %s\n\n", i+1, yellow(attestRef)))
+				continue
+			}
+			outputStr.WriteString(fmt.Sprintf("[%d] Platform:\n", i+1))
+			outputStr.WriteString(fmt.Sprintf("[%d]    -      OS: %s\n", i+1, green(img.Platform.OS)))
 			if img.Platform.OSVersion != "" {
-				fmt.Printf("[%d]    - OS Vers: %s\n", i+1, green(img.Platform.OSVersion))
+				outputStr.WriteString(fmt.Sprintf("[%d]    - OS Vers: %s\n", i+1, green(img.Platform.OSVersion)))
 			}
 			if len(img.Platform.OSFeatures) > 0 {
-				fmt.Printf("[%d]    - OS Feat: %s\n", i+1, green(img.Platform.OSFeatures))
+				outputStr.WriteString(fmt.Sprintf("[%d]    - OS Feat: %s\n", i+1, green(img.Platform.OSFeatures)))
 			}
-			fmt.Printf("[%d]    -    Arch: %s\n", i+1, green(img.Platform.Architecture))
+			outputStr.WriteString(fmt.Sprintf("[%d]    -    Arch: %s\n", i+1, green(img.Platform.Architecture)))
 			if img.Platform.Variant != "" {
-				fmt.Printf("[%d]    - Variant: %s\n", i+1, green(img.Platform.Variant))
+				outputStr.WriteString(fmt.Sprintf("[%d]    - Variant: %s\n", i+1, green(img.Platform.Variant)))
 			}
-			fmt.Printf("[%d] # Layers: %s\n", i+1, red(len(man.Layers)))
+			outputStr.WriteString(fmt.Sprintf("[%d] # Layers: %s\n", i+1, red(len(man.Layers))))
 			for j, layer := range man.Layers {
-				fmt.Printf("     layer %s: digest = %s\n", red(fmt.Sprintf("%02d", j+1)), yellow(layer.Digest))
+				outputStr.WriteString(fmt.Sprintf("     layer %s: digest = %s\n", red(fmt.Sprintf("%02d", j+1)), yellow(layer.Digest)))
+				outputStr.WriteString(fmt.Sprintf("                 type = %s\n", green(layer.MediaType)))
 			}
-			fmt.Println()
+			outputStr.WriteString("\n")
 		default:
-			fmt.Printf("Unknown media type for further display: %s\n", img.MediaType)
+			outputStr.WriteString(fmt.Sprintf("Unknown media type for further display: %s\n", img.MediaType))
 		}
-
 	}
+	imageCount := len(index.Manifests) - attestations
+	imageStr := "image"
+	attestStr := "attestation"
+	if imageCount > 1 {
+		imageStr = "images"
+	}
+	if attestations > 1 {
+		attestStr = "attestations"
+	}
+	fmt.Printf(" * Contains %s manifest references (%s %s, %s %s):\n", red(len(index.Manifests)),
+		red(imageCount), imageStr, red(attestations), attestStr)
+	fmt.Printf("%s", outputStr.String())
 }
 
 func outputImage(name string, descriptor ocispec.Descriptor, manifest ocispec.Manifest, config ocispec.Image) {
