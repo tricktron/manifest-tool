@@ -115,7 +115,9 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 }
 
 func resolvePlatform(descriptor ocispec.Descriptor, img types.ManifestEntry, imgConfig types.Image) (*ocispec.Platform, error) {
+	//nolint: staticcheck // this really cannot be nil, but leave it for now
 	platform := &img.Platform
+	//nolint: staticcheck // this really cannot be nil, but leave it for now
 	if platform == nil {
 		platform = &ocispec.Platform{}
 	}
