@@ -14,23 +14,24 @@ import (
 	"github.com/fatih/color"
 	ocispec "github.com/opencontainers/image-spec/specs-go/v1"
 	"github.com/sirupsen/logrus"
-	"github.com/urfave/cli"
+	"github.com/urfave/cli/v2"
 )
 
-var inspectCmd = cli.Command{
+var inspectCmd = &cli.Command{
 	Name:  "inspect",
 	Usage: "fetch image manifests in a container registry",
 	Flags: []cli.Flag{
-		cli.BoolFlag{
+		&cli.BoolFlag{
 			Name:  "raw",
 			Usage: "raw JSON output",
 		},
-		cli.BoolTFlag{
+		&cli.BoolFlag{
 			Name:  "tags",
 			Usage: "include RepoTags in raw response",
+			Value: true,
 		},
 	},
-	Action: func(c *cli.Context) {
+	Action: func(c *cli.Context) error {
 
 		name := c.Args().First()
 		imageRef, err := util.ParseName(name)
@@ -42,8 +43,8 @@ var inspectCmd = cli.Command{
 		}
 
 		memoryStore := store.NewMemoryStore()
-		resolver := util.NewResolver(c.GlobalString("username"), c.GlobalString("password"), c.GlobalBool("insecure"),
-			c.GlobalBool("plain-http"), c.GlobalString("docker-cfg"))
+		resolver := util.NewResolver(c.String("username"), c.String("password"), c.Bool("insecure"),
+			c.Bool("plain-http"), c.String("docker-cfg"))
 
 		descriptor, err := registry.FetchDescriptor(resolver, memoryStore, imageRef)
 		if err != nil {
@@ -56,7 +57,7 @@ var inspectCmd = cli.Command{
 				logrus.Fatal(err)
 			}
 			fmt.Println(string(out))
-			return
+			return nil
 		}
 		_, db, _ := memoryStore.Get(descriptor)
 		switch descriptor.MediaType {
@@ -81,6 +82,8 @@ var inspectCmd = cli.Command{
 		default:
 			logrus.Errorf("Unknown descriptor type: %s", descriptor.MediaType)
 		}
+
+		return nil
 	},
 }
 

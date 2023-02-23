@@ -12,7 +12,7 @@ require (
 	github.com/opencontainers/image-spec v1.1.0-rc2
 	github.com/pkg/errors v0.9.1
 	github.com/sirupsen/logrus v1.9.0
-	github.com/urfave/cli v1.22.12
+	github.com/urfave/cli/v2 v2.24.4
 	gopkg.in/yaml.v3 v3.0.1
 	oras.land/oras-go/v2 v2.0.0
 )
@@ -28,6 +28,7 @@ require (
 	github.com/moby/locker v1.0.1 // indirect
 	github.com/niemeyer/pretty v0.0.0-20200227124842-a10e7caefd8e // indirect
 	github.com/russross/blackfriday/v2 v2.1.0 // indirect
+	github.com/xrash/smetrics v0.0.0-20201216005158-039620a65673 // indirect
 	golang.org/x/net v0.7.0 // indirect
 	golang.org/x/sync v0.1.0 // indirect
 	golang.org/x/sys v0.5.0 // indirect
