@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"strings"
 
 	"github.com/containerd/containerd/remotes"
 	"github.com/containerd/containerd/remotes/docker"
@@ -88,9 +89,9 @@ func NewResolver(username, password string, insecure, plainHTTP bool, dockerConf
 
 // resolveHostname resolves Docker specific hostnames
 func resolveHostname(hostname string) string {
-	switch hostname {
-	case LegacyDefaultHostname:
-		return DefaultHostname
+	if strings.HasSuffix(hostname, "docker.io") {
+		// Docker's `config.json` uses index.docker.io as the reference
+		return LegacyDefaultHostname
 	}
 	return hostname
 }
