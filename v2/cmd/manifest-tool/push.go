@@ -68,16 +68,23 @@ var pushCmd = cli.Command{
 			Usage: "push a manifest list to a registry via CLI arguments",
 			Flags: []cli.Flag{
 				cli.StringFlag{
-					Name:  "platforms",
-					Usage: "comma-separated list of the platforms that images should be pushed for",
+					Name:     "platforms",
+					Usage:    "comma-separated list of the platforms that images should be pushed for",
+					Required: true,
 				},
 				cli.StringFlag{
-					Name:  "template",
-					Usage: "the pattern the source images have. OS and ARCH in that pattern will be replaced with the actual values from the platforms list",
+					Name:     "template",
+					Usage:    "the pattern the source images have. OS and ARCH in that pattern will be replaced with the actual values from the platforms list",
+					Required: true,
 				},
 				cli.StringFlag{
-					Name:  "target",
-					Usage: "the name of the manifest list image that is going to be produced",
+					Name:     "target",
+					Usage:    "the name of the manifest list image that is going to be produced",
+					Required: true,
+				},
+				cli.StringFlag{
+					Name:  "tags",
+					Usage: "comma-separated list of additional tags to apply to the manifest list image",
 				},
 				cli.BoolFlag{
 					Name:  "ignore-missing",
@@ -88,13 +95,15 @@ var pushCmd = cli.Command{
 				platforms := c.String("platforms")
 				templ := c.String("template")
 				target := c.String("target")
+				tags := c.String("tags")
 				srcImages := []types.ManifestEntry{}
 
-				if len(platforms) == 0 || len(templ) == 0 || len(target) == 0 {
-					logrus.Fatalf("You must specify all three arguments --platforms, --template and --target")
-				}
-
 				platformList := strings.Split(platforms, ",")
+
+				var tagsList []string
+				if len(tags) > 0 {
+					tagsList = strings.Split(tags, ",")
+				}
 
 				for _, platform := range platformList {
 					osArchArr := strings.Split(platform, "/")
@@ -117,6 +126,7 @@ var pushCmd = cli.Command{
 				}
 				yamlInput := types.YAMLInput{
 					Image:     target,
+					Tags:      tagsList,
 					Manifests: srcImages,
 				}
 				manifestType := types.Docker

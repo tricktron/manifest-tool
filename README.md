@@ -162,6 +162,7 @@ an amd64 image:
 
 ```yaml
 image: myprivreg:5000/someimage:latest
+tags: ["1.0.0", "1.0", "1"]
 manifests:
   -
     image: myprivreg:5000/someimage:arm64
@@ -194,12 +195,14 @@ shown below:
 $ manifest-tool push from-args \
     --platforms linux/amd64,linux/s390x,linux/arm64 \
     --template foo/bar-ARCH:v1 \
+    --tags v1.0.0,v1.0 \
     --target foo/bar:v1
 ```
 
 Specifically:
  - `--platforms` specifies which platforms you want to push for in the form OS/ARCH,OS/ARCH,...
  - `--template` specifies the image repo:tag source for inputs by replacing the placeholders `OS`, `ARCH` and `VARIANT` with the inputs from `--platforms`.
+ - `--tags` specifies the tags to apply to the target image in addition to the `--target` tag.
  - `--target` specifies the target image repo:tag that will be the manifest list entry in the registry.
 
 When using the optional `VARIANT` placeholder, it is ignored when a `platform` does not have a variant.
