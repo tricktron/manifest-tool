@@ -21,12 +21,7 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 		return hash, length, fmt.Errorf("Error parsing name for manifest list (%s): %v", input.Image, err)
 	}
 
-	var configDirs []string
-	if configDir != "" {
-		configDirs = append(configDirs, configDir)
-	}
-	resolver := util.NewResolver(username, password, insecure,
-		plainHttp, configDirs...)
+	resolver := util.NewResolver(username, password, insecure, plainHttp, configDir)
 
 	manifestList := types.ManifestList{
 		Name:      input.Image,
