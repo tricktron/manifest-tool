@@ -2,7 +2,6 @@ package util
 
 import (
 	"crypto/tls"
-	"fmt"
 	"net/http"
 	"os"
 	"strings"
@@ -77,10 +76,6 @@ func NewResolver(username, password string, insecure, plainHTTP bool, dockerConf
 		}
 		if auth.IdentityToken != "" {
 			return "", auth.IdentityToken, nil
-		}
-		if auth.Username == "" && auth.Password == "" {
-			// fall back to next config
-			return "", "", fmt.Errorf("no auth found for registry %s", hostName)
 		}
 		return auth.Username, auth.Password, nil
 	}
