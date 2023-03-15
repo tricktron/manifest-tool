@@ -177,5 +177,6 @@ func dockerConvert(m ocispec.Descriptor) manifestlist.ManifestDescriptor {
 	md.Platform.Variant = m.Platform.Variant
 	md.Platform.OSFeatures = m.Platform.OSFeatures
 	md.Platform.OSVersion = m.Platform.OSVersion
+	md.Annotations = m.Annotations
 	return md
 }
