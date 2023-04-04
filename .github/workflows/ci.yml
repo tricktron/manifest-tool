@@ -128,6 +128,51 @@ jobs:
         working-directory: src/github.com/estesp/manifest-tool
 
   #
+  # Integration testing
+  #
+  tests:
+    name: Integration tests
+    runs-on: ubuntu-20.04
+    timeout-minutes: 10
+    needs: [project, linters]
+
+    steps:
+      - uses: actions/setup-go@v3
+        with:
+          go-version: '1.20.2'
+
+      - name: Set env
+        shell: bash
+        run: |
+          echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
+          echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
+
+      - uses: actions/checkout@v3
+        with:
+          path: src/github.com/estesp/manifest-tool
+
+      - name: Make binary
+        run: make binary
+        working-directory: src/github.com/estesp/manifest-tool
+
+      - name: Set up bats
+        run: |
+          git clone https://github.com/bats-core/bats-core.git
+          cd bats-core
+          sudo ./install.sh /usr/local
+          # we need to have a known name (that isn't localhost) for local registry TLS
+          sudo echo "127.0.0.1 myregistry.local" | sudo tee -a /etc/hosts
+
+      - name: Run tests
+        env:
+          RUNTIME_TOOL: docker
+        run: |
+          bats integration/public-registry-tests.bats
+          bats integration/local-registry-tests.bats
+          bats integration/local-registry-tests-tls.bats
+        working-directory: src/github.com/estesp/manifest-tool
+
+  #
   # Cross-built architectures
   #
   cross:
