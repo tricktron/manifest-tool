@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.20.2]
+        go-version: [1.20.3]
         os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
@@ -34,7 +34,7 @@ jobs:
           echo "GOPATH=${{ github.workspace }}" >> $GITHUB_ENV
           echo "${{ github.workspace }}/bin" >> $GITHUB_PATH
 
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
           go-version: ${{ matrix.go-version }}
 
@@ -60,9 +60,9 @@ jobs:
           fetch-depth: 100
 
       - name: Set up Go
-        uses: actions/setup-go@v3
+        uses: actions/setup-go@v4
         with:
-          go-version: 1.20.2
+          go-version: 1.20.3
 
       - name: Set env
         shell: bash
@@ -107,9 +107,9 @@ jobs:
         os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.2'
+          go-version: '1.20.3'
 
       - name: Set env
         shell: bash
@@ -137,9 +137,9 @@ jobs:
     needs: [project, linters]
 
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.2'
+          go-version: '1.20.3'
 
       - name: Set env
         shell: bash
@@ -182,9 +182,9 @@ jobs:
     needs: [project, linters]
 
     steps:
-      - uses: actions/setup-go@v3
+      - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.2'
+          go-version: '1.20.3'
 
       - name: Set env
         shell: bash
