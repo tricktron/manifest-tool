@@ -52,7 +52,7 @@ var inspectCmd = &cli.Command{
 		}
 
 		if c.Bool("raw") {
-			out, err := json.Marshal(descriptor)
+			out, err := generateRawJSON(name, descriptor, memoryStore)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -176,5 +176,89 @@ func outputImage(name string, descriptor ocispec.Descriptor, manifest ocispec.Ma
 	fmt.Printf("    # Layers: %s\n", red(len(manifest.Layers)))
 	for i, layer := range manifest.Layers {
 		fmt.Printf("      layer %s: digest = %s\n", red(fmt.Sprintf("%02d", i+1)), yellow(layer.Digest))
+	}
+}
+
+// struct for modeling an index as raw JSON output in a format that
+// includes the same content displayed in human-readable format
+type indexJson struct {
+	Name          string             `json:"name"`
+	Digest        string             `json:"digest"`
+	SchemaVersion string             `json:"schemaVersion"`
+	MediaType     string             `json:"mediaType,omitempty"`
+	Manifests     []ocispec.Manifest `json:"manifests"`
+	Annotations   map[string]string  `json:"annotations,omitempty"`
+}
+
+// struct for modeling a manifest as raw JSON output in a format that
+// includes the same content displayed in human-readable format
+type manifestJson struct {
+	Name   string `json:"name"`
+	Digest string `json:"digest"`
+	Os     string `json:"os,omitempty"`
+	Arch   string `json:"architecture,omitempty"`
+	ocispec.Manifest
+}
+
+func generateRawJSON(name string, descriptor ocispec.Descriptor, ms *store.MemoryStore) (string, error) {
+
+	_, db, _ := ms.Get(descriptor)
+	switch descriptor.MediaType {
+	case ocispec.MediaTypeImageIndex, types.MediaTypeDockerSchema2ManifestList:
+		// this is a multi-platform image descriptor; marshal to Index type
+		var idx ocispec.Index
+		if err := json.Unmarshal(db, &idx); err != nil {
+			return "", err
+		}
+		indexJSON := indexJson{
+			Name:          name,
+			Digest:        descriptor.Digest.String(),
+			SchemaVersion: fmt.Sprintf("%d", idx.SchemaVersion),
+			MediaType:     idx.MediaType,
+			Annotations:   idx.Annotations,
+		}
+		for _, m := range idx.Manifests {
+			_, man, _ := ms.Get(m)
+			switch m.MediaType {
+			case ocispec.MediaTypeImageManifest, types.MediaTypeDockerSchema2Manifest:
+				var image ocispec.Manifest
+				if err := json.Unmarshal(man, &image); err != nil {
+					return "", err
+				}
+				indexJSON.Manifests = append(indexJSON.Manifests, image)
+			default:
+				return "", fmt.Errorf("unknown media type for further display: %s", m.MediaType)
+			}
+		}
+		b, err := json.MarshalIndent(indexJSON, "", "    ")
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+	case ocispec.MediaTypeImageManifest, types.MediaTypeDockerSchema2Manifest:
+		var man ocispec.Manifest
+		if err := json.Unmarshal(db, &man); err != nil {
+			return "", err
+		}
+		_, cb, _ := ms.Get(man.Config)
+		var conf ocispec.Image
+		if err := json.Unmarshal(cb, &conf); err != nil {
+			return "", err
+		}
+		manifestJSON := manifestJson{
+			Name:     name,
+			Digest:   descriptor.Digest.String(),
+			Os:       conf.OS,
+			Arch:     conf.Architecture,
+			Manifest: man,
+		}
+		b, err := json.MarshalIndent(manifestJSON, "", "    ")
+		if err != nil {
+			return "", err
+		}
+		return string(b), nil
+		// do something
+	default:
+		return "", fmt.Errorf("unknown descriptor type: %s", descriptor.MediaType)
 	}
 }
