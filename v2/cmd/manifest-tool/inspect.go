@@ -26,9 +26,8 @@ var inspectCmd = &cli.Command{
 			Usage: "raw JSON output",
 		},
 		&cli.BoolFlag{
-			Name:  "tags",
-			Usage: "include RepoTags in raw response",
-			Value: true,
+			Name:  "expand-config",
+			Usage: "expand image config content in raw JSON output",
 		},
 	},
 	Action: func(c *cli.Context) error {
@@ -42,6 +41,9 @@ var inspectCmd = &cli.Command{
 			logrus.Fatal("image reference must include a tag; manifest-tool does not default to 'latest'")
 		}
 
+		if c.Bool("expand-config") && !c.Bool("raw") {
+			logrus.Fatal("the --expand-config flag is only valid when used with --raw")
+		}
 		memoryStore := store.NewMemoryStore()
 		resolver := util.NewResolver(c.String("username"), c.String("password"), c.Bool("insecure"),
 			c.Bool("plain-http"), c.String("docker-cfg"))
@@ -52,7 +54,7 @@ var inspectCmd = &cli.Command{
 		}
 
 		if c.Bool("raw") {
-			out, err := generateRawJSON(name, descriptor, memoryStore)
+			out, err := generateRawJSON(name, descriptor, c.Bool("expand-config"), memoryStore)
 			if err != nil {
 				logrus.Fatal(err)
 			}
@@ -184,7 +186,7 @@ func outputImage(name string, descriptor ocispec.Descriptor, manifest ocispec.Ma
 type indexJson struct {
 	Name          string             `json:"name"`
 	Digest        string             `json:"digest"`
-	SchemaVersion string             `json:"schemaVersion"`
+	SchemaVersion int                `json:"schemaVersion"`
 	MediaType     string             `json:"mediaType,omitempty"`
 	Manifests     []ocispec.Manifest `json:"manifests"`
 	Annotations   map[string]string  `json:"annotations,omitempty"`
@@ -200,7 +202,20 @@ type manifestJson struct {
 	ocispec.Manifest
 }
 
-func generateRawJSON(name string, descriptor ocispec.Descriptor, ms *store.MemoryStore) (string, error) {
+type manifestConfigJson struct {
+	SchemaVersion int                  `json:"schemaVersion"`
+	Name          string               `json:"name"`
+	Digest        string               `json:"digest"`
+	Os            string               `json:"os,omitempty"`
+	Arch          string               `json:"architecture,omitempty"`
+	MediaType     string               `json:"mediaType,omitempty"`
+	Config        ocispec.Image        `json:"config"`
+	Layers        []ocispec.Descriptor `json:"layers"`
+	Subject       *ocispec.Descriptor  `json:"subject,omitempty"`
+	Annotations   map[string]string    `json:"annotations,omitempty"`
+}
+
+func generateRawJSON(name string, descriptor ocispec.Descriptor, expandConfig bool, ms *store.MemoryStore) (string, error) {
 
 	_, db, _ := ms.Get(descriptor)
 	switch descriptor.MediaType {
@@ -213,7 +228,7 @@ func generateRawJSON(name string, descriptor ocispec.Descriptor, ms *store.Memor
 		indexJSON := indexJson{
 			Name:          name,
 			Digest:        descriptor.Digest.String(),
-			SchemaVersion: fmt.Sprintf("%d", idx.SchemaVersion),
+			SchemaVersion: idx.SchemaVersion,
 			MediaType:     idx.MediaType,
 			Annotations:   idx.Annotations,
 		}
@@ -245,19 +260,34 @@ func generateRawJSON(name string, descriptor ocispec.Descriptor, ms *store.Memor
 		if err := json.Unmarshal(cb, &conf); err != nil {
 			return "", err
 		}
-		manifestJSON := manifestJson{
-			Name:     name,
-			Digest:   descriptor.Digest.String(),
-			Os:       conf.OS,
-			Arch:     conf.Architecture,
-			Manifest: man,
+		var rawJSON interface{}
+		if !expandConfig {
+			rawJSON = manifestJson{
+				Name:     name,
+				Digest:   descriptor.Digest.String(),
+				Os:       conf.OS,
+				Arch:     conf.Architecture,
+				Manifest: man,
+			}
+		} else {
+			rawJSON = manifestConfigJson{
+				Name:          name,
+				Digest:        descriptor.Digest.String(),
+				Os:            conf.OS,
+				Arch:          conf.Architecture,
+				Config:        conf,
+				Layers:        man.Layers,
+				SchemaVersion: man.SchemaVersion,
+				MediaType:     man.MediaType,
+				Annotations:   man.Annotations,
+				Subject:       man.Subject,
+			}
 		}
-		b, err := json.MarshalIndent(manifestJSON, "", "    ")
+		b, err := json.MarshalIndent(rawJSON, "", "    ")
 		if err != nil {
 			return "", err
 		}
 		return string(b), nil
-		// do something
 	default:
 		return "", fmt.Errorf("unknown descriptor type: %s", descriptor.MediaType)
 	}
