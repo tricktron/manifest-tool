@@ -45,10 +45,13 @@ var inspectCmd = &cli.Command{
 			logrus.Fatal("the --expand-config flag is only valid when used with --raw")
 		}
 		memoryStore := store.NewMemoryStore()
-		resolver := util.NewResolver(c.String("username"), c.String("password"), c.Bool("insecure"),
-			c.Bool("plain-http"), c.String("docker-cfg"))
+		err = util.CreateRegistryHost(imageRef, c.String("username"), c.String("password"), c.Bool("insecure"),
+			c.Bool("plain-http"), c.String("docker-cfg"), false)
+		if err != nil {
+			return fmt.Errorf("error creating registry host configuration: %v", err)
+		}
 
-		descriptor, err := registry.FetchDescriptor(resolver, memoryStore, imageRef)
+		descriptor, err := registry.FetchDescriptor(util.GetResolver(), memoryStore, imageRef)
 		if err != nil {
 			logrus.Error(err)
 		}
