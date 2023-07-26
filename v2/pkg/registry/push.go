@@ -21,12 +21,14 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 		return hash, length, fmt.Errorf("error parsing name for manifest list (%s): %v", input.Image, err)
 	}
 
-	resolver := util.NewResolver(username, password, insecure, plainHttp, configDir)
-
+	err = util.CreateRegistryHost(targetRef, username, password, insecure, plainHttp, configDir, true)
+	if err != nil {
+		return hash, length, fmt.Errorf("error creating registry host configuration: %v", err)
+	}
 	manifestList := types.ManifestList{
 		Name:      input.Image,
 		Reference: targetRef,
-		Resolver:  resolver,
+		Resolver:  util.GetResolver(),
 		Type:      manifestType,
 	}
 	// create an in-memory store for OCI descriptors and content used during the push operation
@@ -48,7 +50,7 @@ func PushManifestList(username, password string, input types.YAMLInput, ignoreMi
 		if reference.Domain(targetRef) != reference.Domain(ref) {
 			return hash, length, fmt.Errorf("source image (%s) registry does not match target image (%s) registry", ref, targetRef)
 		}
-		descriptor, err := FetchDescriptor(resolver, memoryStore, ref)
+		descriptor, err := FetchDescriptor(util.GetResolver(), memoryStore, ref)
 		if err != nil {
 			if ignoreMissing {
 				logrus.Warnf("Couldn't access image '%q'. Skipping due to 'ignore missing' configuration.", img.Image)
