@@ -20,7 +20,7 @@ jobs:
 
     strategy:
       matrix:
-        go-version: [1.20.7]
+        go-version: [1.21.3]
         os: [ubuntu-20.04, macos-12, windows-2019]
 
     steps:
@@ -62,7 +62,7 @@ jobs:
       - name: Set up Go
         uses: actions/setup-go@v4
         with:
-          go-version: 1.20.7
+          go-version: 1.21.3
 
       - name: Set env
         shell: bash
@@ -109,7 +109,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.21.3'
 
       - name: Set env
         shell: bash
@@ -139,7 +139,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.21.3'
 
       - name: Set env
         shell: bash
@@ -184,7 +184,7 @@ jobs:
     steps:
       - uses: actions/setup-go@v4
         with:
-          go-version: '1.20.7'
+          go-version: '1.21.3'
 
       - name: Set env
         shell: bash
