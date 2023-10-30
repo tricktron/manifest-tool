@@ -1,10 +1,10 @@
 # github.com/AdaLogics/go-fuzz-headers v0.0.0-20230811130428-ced1acdcaa24
 ## explicit; go 1.20
 github.com/AdaLogics/go-fuzz-headers
-# github.com/Microsoft/hcsshim v0.11.0
+# github.com/Microsoft/hcsshim v0.11.1
 ## explicit; go 1.18
 github.com/Microsoft/hcsshim/osversion
-# github.com/containerd/containerd v1.7.6
+# github.com/containerd/containerd v1.7.8
 ## explicit; go 1.19
 github.com/containerd/containerd/archive/compression
 github.com/containerd/containerd/content
@@ -25,10 +25,13 @@ github.com/containerd/containerd/remotes/docker/schema1
 github.com/containerd/containerd/remotes/errors
 github.com/containerd/containerd/tracing
 github.com/containerd/containerd/version
+# github.com/containerd/log v0.1.0
+## explicit; go 1.20
+github.com/containerd/log
 # github.com/cpuguy83/go-md2man/v2 v2.0.2
 ## explicit; go 1.11
 github.com/cpuguy83/go-md2man/v2/md2man
-# github.com/docker/cli v23.0.6+incompatible
+# github.com/docker/cli v23.0.7+incompatible
 ## explicit
 github.com/docker/cli/cli/config
 github.com/docker/cli/cli/config/configfile
@@ -41,7 +44,7 @@ github.com/docker/distribution/digestset
 github.com/docker/distribution/manifest
 github.com/docker/distribution/manifest/manifestlist
 github.com/docker/distribution/reference
-# github.com/docker/docker v23.0.6+incompatible
+# github.com/docker/docker v23.0.7+incompatible
 ## explicit
 github.com/docker/docker/cli/config
 github.com/docker/docker/pkg/homedir
@@ -136,11 +139,11 @@ golang.org/x/sync/semaphore
 golang.org/x/sys/execabs
 golang.org/x/sys/unix
 golang.org/x/sys/windows
-# google.golang.org/genproto v0.0.0-20230410155749-daa745c078e1
+# google.golang.org/genproto/googleapis/rpc v0.0.0-20230711160842-782d3b101e98
 ## explicit; go 1.19
 google.golang.org/genproto/googleapis/rpc/status
-# google.golang.org/grpc v1.56.3
-## explicit; go 1.17
+# google.golang.org/grpc v1.58.3
+## explicit; go 1.19
 google.golang.org/grpc/attributes
 google.golang.org/grpc/codes
 google.golang.org/grpc/connectivity
@@ -153,7 +156,7 @@ google.golang.org/grpc/internal/status
 google.golang.org/grpc/resolver
 google.golang.org/grpc/serviceconfig
 google.golang.org/grpc/status
-# google.golang.org/protobuf v1.30.0
+# google.golang.org/protobuf v1.31.0
 ## explicit; go 1.11
 google.golang.org/protobuf/encoding/prototext
 google.golang.org/protobuf/encoding/protowire
