@@ -14,7 +14,7 @@ import (
 var gitCommit = ""
 
 const (
-	version = "2.1.1"
+	version = "2.1.2"
 	usage   = "registry client to inspect and push multi-platform OCI & Docker v2 images"
 )
 
