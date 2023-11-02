@@ -1,29 +1,33 @@
-FROM --platform=$TARGETARCH golang:1.21.3-alpine AS bld
+FROM --platform=$BUILDPLATFORM golang:1.21.3-alpine AS bld
 ARG TARGETPLATFORM
 ARG TARGETARCH
 ARG TARGETVARIANT
 ARG BUILDPLATFORM
 RUN apk add bash git
 
+ENV GOOS linux
+ENV GOARCH $TARGETARCH
+ENV GOARMV $TARGETVARIANT
 # Get GCR credential helper
-RUN go install github.com/GoogleCloudPlatform/docker-credential-gcr@latest
+RUN GOARM=${GOARMV#v} go install github.com/GoogleCloudPlatform/docker-credential-gcr@latest
 
 # Get Amazon ECR credential helper
-RUN go install github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login@latest
+RUN GOARM=${GOARMV#v} go install github.com/awslabs/amazon-ecr-credential-helper/ecr-login/cli/docker-credential-ecr-login@latest
 
 # Get ACR docker env credential helper
-RUN go install github.com/chrismellard/docker-credential-acr-env@latest
+RUN GOARM=${GOARMV#v} go install github.com/chrismellard/docker-credential-acr-env@latest
 
 RUN mkdir /manifest-tool
 WORKDIR /manifest-tool
 COPY  . /manifest-tool
 RUN /manifest-tool/hack/makestatic.sh $TARGETARCH ${TARGETVARIANT#v}
 
-FROM alpine:3.17.0
+FROM --platform=$TARGETPLATFORM alpine:3.17.0
+ARG TARGETARCH
 COPY --from=bld /manifest-tool/manifest-tool /manifest-tool
 COPY --from=bld /etc/ssl/certs/ca-certificates.crt /etc/ssl/certs/ca-certificates.crt
-COPY --from=bld --chown=0:0 /go/bin/docker-credential-gcr /usr/bin/docker-credential-gcloud
-COPY --from=bld --chown=0:0 /go/bin/docker-credential-ecr-login /usr/bin/docker-credential-ecr-login
-COPY --from=bld --chown=0:0 /go/bin/docker-credential-acr-env /usr/bin/docker-credential-acr-env
+COPY --from=bld --chown=0:0 /go/bin/linux_${TARGETARCH}/docker-credential-gcr /usr/bin/docker-credential-gcloud
+COPY --from=bld --chown=0:0 /go/bin/linux_${TARGETARCH}/docker-credential-ecr-login /usr/bin/docker-credential-ecr-login
+COPY --from=bld --chown=0:0 /go/bin/linux_${TARGETARCH}/docker-credential-acr-env /usr/bin/docker-credential-acr-env
 ENV PATH="${PATH}:/"
 ENTRYPOINT [ "/manifest-tool" ]
