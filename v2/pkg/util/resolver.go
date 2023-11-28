@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"net/http"
 	"os"
+	"path/filepath"
 	"strings"
 
 	"github.com/containerd/containerd/remotes"
@@ -13,10 +14,15 @@ import (
 	"github.com/docker/cli/cli/config/configfile"
 	"github.com/docker/cli/cli/config/credentials"
 	"github.com/docker/distribution/reference"
+	"github.com/docker/docker/pkg/homedir"
 	"github.com/sirupsen/logrus"
 )
 
-var registryHost docker.RegistryHost
+var (
+	configDir     = os.Getenv("DOCKER_CONFIG")
+	configFileDir = ".docker"
+	registryHost  docker.RegistryHost
+)
 
 func CreateRegistryHost(imageRef reference.Named, username, password string, insecure, plainHTTP bool, dockerConfigPath string, pushOp bool) error {
 
@@ -57,8 +63,8 @@ func CreateRegistryHost(imageRef reference.Named, username, password string, ins
 			err error
 			cfg *configfile.ConfigFile
 		)
-		if dockerConfigPath == "" || dockerConfigPath == config.Dir() {
-			cfg, err = config.Load(config.Dir())
+		if dockerConfigPath == "" || dockerConfigPath == configDir {
+			cfg, err = config.Load(configDir)
 			if err != nil {
 				logrus.Warnf("unable to load default Docker auth config: %v", err)
 			}
@@ -115,4 +121,14 @@ func resolveHostname(hostname string) string {
 		return LegacyDefaultHostname
 	}
 	return hostname
+}
+
+func init() {
+	if configDir == "" {
+		configDir = filepath.Join(homedir.Get(), configFileDir)
+	}
+}
+
+func ConfigDir() string {
+	return configDir
 }

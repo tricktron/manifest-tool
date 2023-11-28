@@ -5,7 +5,7 @@ import (
 	"os"
 	"path/filepath"
 
-	"github.com/docker/docker/cli/config"
+	"github.com/estesp/manifest-tool/v2/pkg/util"
 	"github.com/sirupsen/logrus"
 	"github.com/urfave/cli/v2"
 )
@@ -15,7 +15,7 @@ var gitCommit = ""
 var version = ""
 
 const (
-	usage   = "registry client to inspect and push multi-platform OCI & Docker v2 images"
+	usage = "registry client to inspect and push multi-platform OCI & Docker v2 images"
 )
 
 func main() {
@@ -56,7 +56,7 @@ func runApplication() error {
 		},
 		&cli.StringFlag{
 			Name:  "docker-cfg",
-			Value: config.Dir(),
+			Value: util.ConfigDir(),
 			Usage: "either a directory path containing a Docker-formatted config.json or a specific JSON file formatted for registry auth",
 		},
 	}
@@ -69,7 +69,7 @@ func runApplication() error {
 		dockerAuthPath := c.String("docker-cfg")
 		// if set to the default, we don't check for validity because it may not
 		// even exist
-		if dockerAuthPath == config.Dir() {
+		if dockerAuthPath == util.ConfigDir() {
 			if err := c.Set("docker-cfg", filepath.Join(dockerAuthPath, "config.json")); err != nil {
 				return fmt.Errorf("unable to update docker-cfg flag in context: %w", err)
 			}
