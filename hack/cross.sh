@@ -7,9 +7,10 @@ COMMIT="$(git rev-parse HEAD 2>/dev/null)"
 if [ -n "$(git status --porcelain --untracked-files=no)" ]; then
   COMMIT="${COMMIT}-dirty"
 fi
+VERSION="$(git describe --tags --always | cut -c 2-)"
 
-LDFLAGS="-w -extldflags -static -X main.gitCommit=${COMMIT}"
-LDFLAGS_OTHER="-X main.gitCommit=${COMMIT}"
+LDFLAGS="-w -extldflags -static -X main.gitCommit=${COMMIT} -X main.version=${VERSION}"
+LDFLAGS_OTHER="-X main.gitCommit=${COMMIT} -X main.version=${VERSION}"
 
 # List of platforms we build binaries for at this time:
 PLATFORMS=(
