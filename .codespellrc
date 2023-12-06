@@ -1,3 +1,3 @@
 [codespell]
-skip = .git,*.pdf,*.svg,go.sum,.codespellrc
+skip = .git,*.pdf,*.svg,go.sum,.codespellrc,vendor
 check-hidden = true
