@@ -95,7 +95,7 @@ utilizes the containerd resolver library.
 Example output of an `inspect` on a manifest list media type is shown below:
 
 ```sh
-$ $ manifest-tool inspect golang:1.17
+$ manifest-tool inspect golang:1.17
 Name:   golang:1.17 (Type: application/vnd.docker.distribution.manifest.list.v2+json)
 Digest: sha256:1a35cc2c5338409227c7293add327ebe42e1ee5465049f6c57c829588e3f8a39
  * Contains 10 manifest references:
